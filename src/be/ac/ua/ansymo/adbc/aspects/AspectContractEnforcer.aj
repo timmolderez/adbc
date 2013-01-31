@@ -124,6 +124,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advKind = "after";
 		}
 		
+		// Evaluate calls to the $old() function in postconditions of advice
+		try {
+			if (AdbcConfig.checkPostconditions) {
+				ceval.setThisBinding(jp.getThis());
+				ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
+				advPost = ceval.evalOldFunction(advPost);
+			}
+		} catch (ScriptException e) {
+			System.out.println(e.getMessage());
+			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
+		}
+		
 		// Bind parameter values of advised join point
 		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
 		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
@@ -131,14 +143,10 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Bind the "this" object
 		ceval.setThisBinding(tjp.getTarget());
 		
-		// Evaluate calls to the $old() function in postconditions
+		// Evaluate calls to the $old() function in postconditions of the advised join point
 		try {
 			if (AdbcConfig.checkPostconditions) {
 				post = ceval.evalOldFunction(post);
-				
-				ceval.setThisBinding(jp.getThis());
-				ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
-				advPost = ceval.evalOldFunction(advPost);
 			}
 		} catch (ScriptException e) {
 			System.out.println(e.getMessage());
@@ -171,8 +179,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 			invFailed = ceval.evalContract(advInv);
 			if (invFailed != null) {
-				throw new InvariantException(invFailed, tjp.getTarget()
-						.toString(), "invariant not preserved");
+				throw new InvariantException(invFailed, jp.getSignature().toString(), "invariant not preserved");
 			}
 		}
 	}

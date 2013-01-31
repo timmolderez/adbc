@@ -1,6 +1,7 @@
 package be.ac.ua.ansymo.example_bank.aspects;
 
 import be.ac.ua.ansymo.adbc.annotations.ensures;
+import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 import be.ac.ua.ansymo.example_bank.Account;
 
@@ -9,6 +10,7 @@ import be.ac.ua.ansymo.example_bank.Account;
  * @author Tim Molderez
  *
  */
+@invariant("false")
 public aspect TransactionLogger {
 	@requires("true")
 	@ensures("true")

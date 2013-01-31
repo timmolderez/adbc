@@ -9,6 +9,7 @@
 
 package be.ac.ua.ansymo.adbc.utilities;
 
+import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -28,6 +29,7 @@ public class ContractInterpreter {
 	public ContractInterpreter() {
 		ScriptEngineManager manager = new ScriptEngineManager();
 		engine = manager.getEngineByName("JavaScript");
+		
 	}
 	
 	/**

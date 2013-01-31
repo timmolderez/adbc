@@ -8,6 +8,7 @@ import be.ac.ua.ansymo.adbc.annotations.requires;
 public class Account {
 	double amount;
 	User owner;
+	public int bla = 5;
 	
 	public Account(double amount, User owner) {
 		this.amount = amount;
