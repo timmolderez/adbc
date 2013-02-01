@@ -10,7 +10,7 @@ import be.ac.ua.ansymo.example_bank.Account;
  * @author Tim Molderez
  *
  */
-@invariant("false")
+@invariant("true")
 public aspect TransactionLogger {
 	@requires("true")
 	@ensures("true")
