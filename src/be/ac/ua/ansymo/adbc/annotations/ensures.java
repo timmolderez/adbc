@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  * @author Tim Molderez
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Target(value={ElementType.METHOD,ElementType.CONSTRUCTOR})
 public @interface ensures {
 	String[] value();
 }

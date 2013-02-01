@@ -29,10 +29,8 @@ public abstract aspect AbstractContractEnforcer {
 	/* This partial pointcut excludes any join point coming from the contract enforcement aspects.
 	 * Everything produced in the cflow of proceed calls still is included.	*/
 	protected pointcut excludeContractEnforcers(): 
-	!cflow(call(void ClassContractEnforcer.preCheck(..)))
-	&& !cflow(call(void ClassContractEnforcer.postCheck(..)))
-	&& !cflow(call(void AspectContractEnforcer.preCheck(..)))
-	&& !cflow(call(void AspectContractEnforcer.postCheck(..)))
+	!cflow(call(void ClassContractEnforcer.*Check(..)))
+	&& !cflow(call(void AspectContractEnforcer.*Check(..)))
 	&& !within(be.ac.ua.ansymo.adbc.aspects.CallStack)
 	&& if(AdbcConfig.enforceContracts);
 }

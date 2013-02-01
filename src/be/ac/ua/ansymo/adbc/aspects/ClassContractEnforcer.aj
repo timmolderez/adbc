@@ -9,12 +9,14 @@
 
 package be.ac.ua.ansymo.adbc.aspects;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Vector;
 
 import javax.script.ScriptException;
 
 import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.reflect.ConstructorSignature;
 import org.aspectj.lang.reflect.MethodSignature;
 
 import be.ac.ua.ansymo.adbc.AdbcConfig;
@@ -42,9 +44,8 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 */
 	Object around(Object dyn): execution(* *.*(..)) && this(dyn)
 	&& excludeContractEnforcers() {
-		/* Very sensitive pointcut! Do not perform any method calls here besides preCheck() and postCheck() 
+		/* Very sensitive pointcut!! Do not perform any method calls here besides preCheck() and postCheck() 
 		 * or you'll trigger infinite pointcut matching! */
-		
 		try {
 			preCheck(thisJoinPoint, dyn);
 			Object result = proceed(dyn);
@@ -58,13 +59,27 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 	}
 	
+	/**
+	 * Enforces the contracts of constructor calls, i.e. its postconditions and invariants
+	 * should hold after the constructor finishes.
+	 */
+	after() returning (Object o) : call(*.new(..)) && excludeContractEnforcers() {
+		if (AdbcConfig.checkPostconditions) {
+			try {
+				constructorCheck(thisJoinPoint, o);
+			} catch (ScriptException e) {
+				System.err.println(e.getMessage());
+				throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
+			}
+		}
+	}
 	
 	/*
 	 * Check contracts before method execution (preconditions, invariants, substitution principle)
 	 */
 	private void preCheck(JoinPoint jp, Object dyn) throws ScriptException {
 		// Reset bindings
-				ceval = new ContractInterpreter();
+		ceval = new ContractInterpreter();
 		
 		/* Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
 		 * We need this call join point because it knows the static type of the method call; the execution join point
@@ -151,6 +166,47 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test Liskov substitution
 		if (AdbcConfig.checkSubstitutionPrinciple) {
 			liskovPostCheck(true, dyn.getClass(), mSig, 0);
+		}
+	}
+	
+	/*
+	 * Checks the postconditions and invariants after a constructor call
+	 */
+	private void constructorCheck(JoinPoint jp, Object dyn) throws ScriptException {
+		// Reset bindings
+		ceval = new ContractInterpreter();
+		
+		// Get the contracts 
+		ConstructorSignature cSig = (ConstructorSignature)(jp.getSignature());
+		Constructor<?> cBody = cSig.getConstructor();
+		
+		post = new String[]{"true"};
+		inv = new String[]{"true"};
+		
+		if (cBody.isAnnotationPresent(ensures.class)) {
+			post = cBody.getAnnotation(ensures.class).value();
+		}
+		if (dyn.getClass().isAnnotationPresent(invariant.class)) {
+			inv = dyn.getClass().getAnnotation(invariant.class).value();
+		}
+		
+		// Bind parameter values
+		ceval.setParameterBindings(cSig.getParameterNames(), jp.getArgs());
+		
+		// Bind the this object
+		ceval.setThisBinding(dyn);
+
+		// Test postconditions
+		String brokenContract;
+		brokenContract = ceval.evalContract(post);
+		if(brokenContract!=null) {
+			throw new PostConditionException(brokenContract, dyn.getClass().toString());
+		}
+		
+		// Test invariants
+		brokenContract = ceval.evalContract(inv);
+		if(brokenContract!=null) {
+			throw new InvariantException(brokenContract, dyn.getClass().toString(), "postcondition");
 		}
 	}
 	

@@ -10,6 +10,10 @@ public class Account {
 	User owner;
 	public int bla = 5;
 	
+	@ensures({
+			"$this.amount==amount",
+			"$this.owner==owner"
+		})
 	public Account(double amount, User owner) {
 		this.amount = amount;
 		this.owner = owner;

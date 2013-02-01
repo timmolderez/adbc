@@ -32,7 +32,7 @@ public class Main {
 //			u1acc2.transfer(5.0, u2acc1); // Uncomment this line to trigger a Liskov substitution error; precondition of SavingsAccount.transfer is stronger than that of Account
 			u1acc2.transfer(10.0, u1acc1);	
 		} catch (Exception e) {
-			System.err.println(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 }
