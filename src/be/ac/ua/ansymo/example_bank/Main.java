@@ -18,6 +18,9 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		try {
+//			AdbcConfig.engine = "JavaScript";
+//			AdbcConfig.keywordPrefix = "$";
+			
 			User u1 = new User("Finn");
 			Account u1acc1 = new Account(30.0, u1);
 			Account u1acc2 = new SavingsAccount(30.0, u1);
@@ -30,7 +33,7 @@ public class Main {
 			u1acc1.transfer(5.0, u2acc1);
 			
 //			u1acc2.transfer(5.0, u2acc1); // Uncomment this line to trigger a Liskov substitution error; precondition of SavingsAccount.transfer is stronger than that of Account
-			u1acc2.transfer(10.0, u1acc1);	
+			u1acc2.transfer(10.0, u1acc1);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

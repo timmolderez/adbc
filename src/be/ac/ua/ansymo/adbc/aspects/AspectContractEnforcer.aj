@@ -10,6 +10,7 @@
 package be.ac.ua.ansymo.adbc.aspects;
 
 import java.lang.reflect.Method;
+import java.util.EmptyStackException;
 
 import javax.script.ScriptException;
 
@@ -50,6 +51,19 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		/* Very sensitive pointcut! Do not perform any method calls here besides preCheck() and postCheck() 
 		 * or you'll trigger infinite pointcut matching! */
 		
+		// Retrieve the thisJoinPoint object of the user-advice
+		try {
+			/* Note that we're peeking into CallStack, not popping! Other contract enforcement
+			 * still need this top entry! */
+			tjp = CallStack.peek();
+		} catch (EmptyStackException e) {
+			/* In case the advice we've intercepted advises join points other than calls and executions,
+			 * there's not going to be an entry on the CallStack for it..
+			 * TODO: For now we don't support these kinds of advice yet.
+			 * Still need to figure out some way to get access to the join point they advise.. */
+			return proceed(dyn);
+		}
+		
 		try {
 			preCheck(thisJoinPoint, dyn);
 			Object result = proceed(dyn);
@@ -69,12 +83,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	private void preCheck(JoinPoint jp, Object dyn) throws ScriptException {
 		// Reset bindings
 		ceval = new ContractInterpreter();
-		
-		// Retrieve the thisJoinPoint object of the user-advice 
-		/* Note that we're peeking into CallStack, not popping! Other contract enforcement
-		 * still need this top entry! */
-		tjp = CallStack.peek();
-		
 		
 		// Get the contracts of the user advice's advised joinpoint
 		// TODO: This currently does not work yet for  higher-order advice!

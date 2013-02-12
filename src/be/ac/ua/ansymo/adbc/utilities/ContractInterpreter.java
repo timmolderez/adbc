@@ -13,6 +13,8 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import be.ac.ua.ansymo.adbc.AdbcConfig;
+
 /**
  * Helper class used to evaluate contracts 
  * @author Tim Molderez
@@ -22,13 +24,16 @@ public class ContractInterpreter {
 	private ScriptEngine engine;
 	private int oldCounter;
 	
+	private String thisKeyword = AdbcConfig.keywordPrefix + "this";
+	private String resultKeyword = AdbcConfig.keywordPrefix + "result";
+	private String oldKeyword = AdbcConfig.keywordPrefix + "old";
+	
 	/**
 	 * Default constructor
 	 */
 	public ContractInterpreter() {
 		ScriptEngineManager manager = new ScriptEngineManager();
-		engine = manager.getEngineByName("JavaScript");
-		
+		engine = manager.getEngineByName(AdbcConfig.engine);
 	}
 	
 	/**
@@ -52,7 +57,7 @@ public class ContractInterpreter {
 	 * @param t		the this object to be bound
 	 */
 	public void setThisBinding(Object t) {
-		engine.put("$this", t);
+		engine.put(thisKeyword, t);
 	}
 	
 	/**
@@ -60,7 +65,7 @@ public class ContractInterpreter {
 	 * @param t
 	 */
 	public void setReturnValueBinding(Object t) {
-		engine.put("$result", t);
+		engine.put(resultKeyword, t);
 	}
 	
 	/**
@@ -99,7 +104,7 @@ public class ContractInterpreter {
 	 */
 	private String evalOldFunction_helper(String expr) throws ScriptException {
 		// Find the first old call, if any
-		int openPos = expr.indexOf("$old("); 
+		int openPos = expr.indexOf(oldKeyword + "("); 
 		if (openPos == -1) {
 			return expr;
 		}
@@ -121,11 +126,11 @@ public class ContractInterpreter {
 			oldCounter++;
 			
 			Object oldResult = engine.eval(expr.substring(openPos, i-1));
-			engine.put("$old" + oldCounter, oldResult);
+			engine.put(oldKeyword + oldCounter, oldResult);
 			
 			// Return the part before the first old() call + the result of the old() call + recursion on the remainder.
 			return expr.substring(0, openPos-5) 
-					+ "$old" + oldCounter 
+					+ oldKeyword + oldCounter 
 					+ evalOldFunction_helper(expr.substring(i));
 		} else {
 			throw new ScriptException("No matching brackets in call to old function.");

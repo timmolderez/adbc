@@ -10,26 +10,42 @@
 package be.ac.ua.ansymo.adbc;
 
 /**
- * Adbc configuration - Use it to access and change Adbc's settings at any time
+ * Adbc configuration - Simply change the fields exposed by this class to alter Adbc's settings at any time
  * @author Tim Molderez
  */
 public class AdbcConfig {
 	/**
-	 * If true, contracts enforcing is enabled. (Default value: true)
+	 * If true, contract enforcement is enabled. (Default value: true)
 	 * If false, adbc is disabled.
 	 */
 	public static boolean enforceContracts = true;
 	
 	/**
 	 * If true, advice and Liskov substitution are checked. (Default value: true)
-	 * You may want to set it to false for better performance, or if there are occurences 
-	 * where you can't help but to break the substitution principle.
+	 * You may want to set it to false for better performance.
 	 */
 	public static boolean checkSubstitutionPrinciple = true;
 	
 	/**
 	 * If true, both pre- and postconditions are checked. (Default value: true)
-	 * If false, only preconditions are checked, but you'll take less of a performance hit.
+	 * If false, only preconditions are checked, but you'll take a smaller performance hit.
 	 */
 	public static boolean checkPostconditions = true;
+	
+	/**
+	 * This scripting engine is used to execute contracts.
+	 * "JavaScript" refers to the default Mozilla Rhino engine that comes with the JRE.
+	 * 
+	 * If you want to use another engine: It must implement the JSR-223 specification (javax.script) 
+	 * and should use the service provider mechanism to be discoverable by name.
+	 * Have a look at http://java.net/projects/scripting/sources/svn/show/trunk to find JSR-223 support
+	 * for a variety of languages.
+	 */
+	public static String engine = "JavaScript";
+	
+	/**
+	 * The prefix to be used for the special constructs that can occur in contracts (e.g. $this, $old, $result, ..)
+	 * You may want to change the prefix if you're using a scripting engine that does not allow the default $ character in identifiers
+	 */
+	public static String keywordPrefix = "$";
 }

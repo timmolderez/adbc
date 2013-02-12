@@ -8,7 +8,6 @@ import be.ac.ua.ansymo.example_bank.Account;
 /**
  * Aspect that logs all transfers between accounts
  * @author Tim Molderez
- *
  */
 @invariant("true")
 public aspect TransactionLogger {

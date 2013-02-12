@@ -8,8 +8,9 @@ import be.ac.ua.ansymo.adbc.annotations.requires;
 public class Account {
 	double amount;
 	User owner;
-	public int bla = 5;
 	
+	@requires({"amount>0",
+			"owner!=null"})
 	@ensures({
 			"$this.amount==amount",
 			"$this.owner==owner"
