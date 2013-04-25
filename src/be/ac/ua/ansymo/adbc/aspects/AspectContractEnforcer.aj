@@ -15,10 +15,12 @@ import java.util.EmptyStackException;
 import javax.script.ScriptException;
 
 import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.AdviceName;
 import org.aspectj.lang.reflect.AdviceSignature;
 import org.aspectj.lang.reflect.MethodSignature;
 
 import be.ac.ua.ansymo.adbc.AdbcConfig;
+import be.ac.ua.ansymo.adbc.annotations.advisedBy;
 import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.requires;
@@ -29,7 +31,7 @@ import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
 
 /**
- * This aspects enforces the contracts of all aspects. 
+ * This aspect enforces the contracts of all aspects in the application. 
  * If a contract is broken, a ContractEnforcementException is thrown.
  * 
  * @author Tim Molderez
@@ -81,19 +83,42 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	 * check all contracts before advice execution (preconditions, invariants, substitution principle)
 	 */
 	private void preCheck(JoinPoint jp, Object dyn) throws ScriptException {
-		// Reset bindings
-		ceval = new ContractInterpreter();
+		/* ****************************************************************
+		 * Fetching the necessary info...
+		 **************************************************************** */
 		
-		// Get the contracts of the user advice's advised joinpoint
-		// TODO: This currently does not work yet for  higher-order advice!
-		pre = new String[]{"true"};
-		post = new String[]{"true"};
-		inv = new String[]{"true"};
+		// Retrieve the join point advised by the user-advice 
+		tjp = CallStack.peek();
 		
+		// Retrieve the method being advised by the user-advice
 		String m = tjp.getSignature().toString();
 		int lastdot = m.lastIndexOf('.');
 		m = m.substring(lastdot + 1, m.length());
 		Method mBody = ((MethodSignature) tjp.getSignature()).getMethod();
+		
+		// Retrieve the user-advice
+		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
+		Method aBody = aSig.getAdvice();
+		
+		// Determine whether this advice is mentioned in an @advisedBy clause
+		boolean isAdvisedBy = false;
+		if (aBody.isAnnotationPresent(AdviceName.class) && mBody.isAnnotationPresent(advisedBy.class)) {
+			String advName = aBody.getAnnotation(AdviceName.class).value();
+			String[] advBy = mBody.getAnnotation(advisedBy.class).value();
+			
+			for (String listedName : advBy) {
+				if(listedName.equals(aBody.getDeclaringClass().getSimpleName() + "." + advName)) {
+					isAdvisedBy = true;
+				}
+			}
+		}
+		
+		// Get the contracts of the user advice's advised joinpoint
+		// TODO: This currently does not work yet for higher-order advice..
+		pre = new String[]{"true"};
+		post = new String[]{"true"};
+		inv = new String[]{"true"};
+		
 		if (mBody.isAnnotationPresent(requires.class)) {
 			pre = mBody.getAnnotation(requires.class).value();
 		}
@@ -105,9 +130,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		}
 		
 		// Get the contracts of the user-advice itself
-		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
-		Method aBody = aSig.getAdvice();
-		
 		advPre = new String[]{"true"};
 		advPost = new String[]{"true"};
 		advInv = new String[]{"true"};
@@ -132,6 +154,13 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advKind = "after";
 		}
 		
+		/* ****************************************************************
+		 * Binding contract variables
+		 **************************************************************** */
+		
+		// Reset bindings
+		ceval = new ContractInterpreter();
+		
 		// Evaluate calls to the $old() function in postconditions of advice
 		try {
 			if (AdbcConfig.checkPostconditions) {
@@ -147,6 +176,10 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Bind parameter values of advised join point
 		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
 		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
+		
+		/* ****************************************************************
+		 * Actual contract enforcement
+		 **************************************************************** */
 		
 		// Bind the "this" object
 		ceval.setThisBinding(tjp.getTarget());
