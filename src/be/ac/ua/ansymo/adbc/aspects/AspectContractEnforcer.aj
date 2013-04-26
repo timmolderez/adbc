@@ -101,19 +101,9 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		Method aBody = aSig.getAdvice();
 		
 		// Determine whether this advice is mentioned in an @advisedBy clause
-		boolean isAdvisedBy = false;
-		if (aBody.isAnnotationPresent(AdviceName.class) && mBody.isAnnotationPresent(advisedBy.class)) {
-			String advName = aBody.getAnnotation(AdviceName.class).value();
-			String[] advBy = mBody.getAnnotation(advisedBy.class).value();
-			
-			for (String listedName : advBy) {
-				if(listedName.equals(aBody.getDeclaringClass().getSimpleName() + "." + advName)) {
-					isAdvisedBy = true;
-				}
-			}
-		}
+		boolean isAdvisedBy = isAdvisedBy(mBody, aBody);
 		
-		// Get the contracts of the user advice's advised joinpoint
+		// Get the contracts of the user-advice's advised joinpoint
 		// TODO: This currently does not work yet for higher-order advice..
 		pre = new String[]{"true"};
 		post = new String[]{"true"};
@@ -125,7 +115,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (mBody.isAnnotationPresent(ensures.class)) {
 			post = mBody.getAnnotation(ensures.class).value();
 		}
-		if (tjp.getTarget().getClass().isAnnotationPresent(invariant.class)) {
+		if (tjp.getTarget()!=null && tjp.getTarget().getClass().isAnnotationPresent(invariant.class)) {
 			inv = tjp.getTarget().getClass().getAnnotation(invariant.class).value();
 		}
 		
@@ -134,7 +124,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		advPost = new String[]{"true"};
 		advInv = new String[]{"true"};
 		
-		if (AdbcConfig.checkSubstitutionPrinciple) {
+		if (AdbcConfig.checkSubstitutionPrinciple || isAdvisedBy) {
 			if (aBody.isAnnotationPresent(requires.class)) {
 				advPre = aBody.getAnnotation(requires.class).value();
 			}
@@ -161,6 +151,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Reset bindings
 		ceval = new ContractInterpreter();
 		
+		// Resolve the $proc keyword
+		if(isAdvisedBy && advKind.equals("around")) {
+			pre = ceval.evalProc(advPre, pre);
+			post = ceval.evalProc(advPost, post);
+		} else {
+			
+		}
+		
 		// Evaluate calls to the $old() function in postconditions of advice
 		try {
 			if (AdbcConfig.checkPostconditions) {
@@ -169,7 +167,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				advPost = ceval.evalOldFunction(advPost);
 			}
 		} catch (ScriptException e) {
-			System.out.println(e.getMessage());
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
 		
@@ -190,7 +187,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				post = ceval.evalOldFunction(post);
 			}
 		} catch (ScriptException e) {
-			System.out.println(e.getMessage());
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
 		
@@ -208,8 +204,8 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			throw new InvariantException(invFailed, getCaller(), "precondition");
 		}
 
-		// Test advice substitution
-		if (AdbcConfig.checkSubstitutionPrinciple) {
+		// Test advice substitution, if applicable
+		if (!isAdvisedBy && AdbcConfig.checkSubstitutionPrinciple) {
 			ceval.setThisBinding(jp.getThis());
 			ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
 			
@@ -223,6 +219,43 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				throw new InvariantException(invFailed, jp.getSignature().toString(), "invariant not preserved");
 			}
 		}
+	}
+
+	/**
+	 * Determine whether advice aBody appears in the advisedBy clause of method mBody (or the same method in an ancestor class)
+	 * @param mBody
+	 * @param aBody
+	 * @return
+	 */
+	private boolean isAdvisedBy(Method mBody, Method aBody) {
+		if (!aBody.isAnnotationPresent(AdviceName.class)) {
+			return false;
+		}
+		
+		String advName = aBody.getAnnotation(AdviceName.class).value();
+//		System.out.println(advName + mBody);
+		Class<?> mClass = mBody.getDeclaringClass();
+		Class<?>[] mParTypes = mBody.getParameterTypes();
+		String mName = mBody.getName();
+		
+		
+		while(mClass!=null) {
+			try {
+				mBody = mClass.getMethod(mName, mParTypes);
+				// If there's an @advisedBy annotation, go check whether aBody is mentioned..
+				if (mBody.isAnnotationPresent(advisedBy.class)) {
+					String[] advBy = mBody.getAnnotation(advisedBy.class).value();
+					for (String listedName : advBy) {
+						if(listedName.equals(aBody.getDeclaringClass().getCanonicalName() + "." + advName)) {
+							return true;
+						}
+					}
+				}
+			} catch (Exception e) {/* If the method is not found within mClass, do nothing.. */}
+			
+			mClass = mClass.getSuperclass();
+		}
+		return false;
 	}
 
 	/*

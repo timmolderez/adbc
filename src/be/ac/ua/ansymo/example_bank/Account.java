@@ -1,5 +1,6 @@
 package be.ac.ua.ansymo.example_bank;
 
+import be.ac.ua.ansymo.adbc.annotations.advisedBy;
 import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.requires;
@@ -39,6 +40,7 @@ public class Account {
 		"$this.getAmount()==$old($this.getAmount())-amount",
 		"to.getAmount()==$old(to.getAmount())+amount"
 		})
+	@advisedBy("be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate")
 	public void transfer(double amount, Account to) {
 		withdraw(amount);
 		to.deposit(amount);

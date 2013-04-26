@@ -9,6 +9,8 @@
 
 package be.ac.ua.ansymo.adbc.utilities;
 
+import java.util.Vector;
+
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -24,9 +26,10 @@ public class ContractInterpreter {
 	private ScriptEngine engine;
 	private int oldCounter;
 	
-	private String thisKeyword = AdbcConfig.keywordPrefix + "this";
-	private String resultKeyword = AdbcConfig.keywordPrefix + "result";
-	private String oldKeyword = AdbcConfig.keywordPrefix + "old";
+	private static String thisKeyword = AdbcConfig.keywordPrefix + "this";
+	private static String resultKeyword = AdbcConfig.keywordPrefix + "result";
+	private static String oldKeyword = AdbcConfig.keywordPrefix + "old";
+	private static String procKeyword = AdbcConfig.keywordPrefix + "proc";
 	
 	/**
 	 * Default constructor
@@ -82,6 +85,31 @@ public class ContractInterpreter {
 				engine.put("arg"+i, values[i]);
 			}
 		}
+	}
+	
+	/**
+	 * Evaluate the proc keyword, in case an advice is *not* mentioned in an @advisedBy clause 
+	 * @param jpContracts
+	 */
+	public String[] evalProc(String[] advContracts, String[] jpContracts) {
+		String combined = "";
+		String separator = "";
+		for (String contract : jpContracts) {
+			combined += separator + contract;
+			separator = " && ";
+		}
+		
+		int i=0;
+		for (String contract : advContracts) {
+			advContracts[i]=contract.replaceAll(procKeyword, combined);
+			i++;
+		}
+		return advContracts;
+	}
+	
+	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advBy) {
+		//TODO
+		return null;
 	}
 	
 	/**

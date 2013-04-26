@@ -394,7 +394,7 @@ AdbcConfig
 \end_layout
 
 \begin_layout Section*
-Caveats
+Troubleshooting
 \end_layout
 
 \begin_layout Itemize
@@ -422,19 +422,23 @@ adbc.jar
 \end_layout
 
 \begin_layout Itemize
-Keep in mind adbc is currently still a proof of concept.
- This means some basic features are still missing: contracts on constructors,
- attaching invariants directly to fields, inheriting contracts from the
- super class or the advised join point.
- The performance of adbc could also be improved with some caching.
-\end_layout
-
-\begin_layout Itemize
 If parameter names are not available in contracts, try passing the "-g:var"
  command-line parameter to the compiler.
  (This should be enabled by default when using AJDT.) Otherwise, if parameter
  names cannot be retrieved, you can use "arg0", "arg1", ..
  instead.
+\end_layout
+
+\begin_layout Section*
+Caveats
+\end_layout
+
+\begin_layout Itemize
+Keep in mind adbc is currently still a proof of concept.
+ This means some basic features are still missing: attaching invariants
+ directly to fields, inheriting contracts from the super class or the advised
+ join point.
+ The performance of adbc could also be vastly improved with some caching.
 \end_layout
 
 \begin_layout Itemize
@@ -446,15 +450,73 @@ thisjoinpoint
 \family default
  object.
  Our contract enforcement advice needs access to that object, but it is
- created lazily by the higher-order advice, so it may not be available.
+ created lazily by the higher-order advice, so it may or may not be available..
 \end_layout
 
 \begin_layout Itemize
 Checking Liskov substitution currently assumes that overridding methods
  use the same parameter names as the overridden method.
- (This could be solved using the Paranamer library..) 
+ (This could be solved using the Paranamer library..)
 \end_layout
 
+\begin_layout Itemize
+There is basic support for the 
+\family typewriter
+@advisedBy
+\family default
+ annotation/clause, but a few things could be improved:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+An advice mentioned in an 
+\family typewriter
+@advisedBy
+\family default
+ clause has to be mentioned by its canonical name.
+ It would be nicer if you could use its simple name (+ an import statement).
+\end_layout
+
+\begin_layout Itemize
+If multiple advice are mentioned in an 
+\family typewriter
+@advisedBy
+\family default
+ clause, and when resolving the 
+\family typewriter
+$proc
+\family default
+ variable, we assume that the advice mentioned in the clause use the same
+ parameter names as the join point they advise.
+ (Should be possible to figure out the mapping from the advice's names to
+ those used by the join point..
+ Could be done by examining the advice's pointcut, but I'd rather not re-invent
+ parts of the AspectJ compiler..)
+\end_layout
+
+\begin_layout Itemize
+If multiple advice are mentioned in an 
+\family typewriter
+@advisedBy
+\family default
+ clause, we do not enforce the ordering of the listed advice, but assume
+ this is done by a separate declare precedence statement.
+\end_layout
+
+\begin_layout Itemize
+Even though advice can have names (using an 
+\family typewriter
+@AdviceName
+\family default
+ annotation), AspectJ currently does not support overriding advice, so it's
+ not possible either to make use of them in an 
+\family typewriter
+@advisedBy
+\family default
+ clause..
+\end_layout
+
+\end_deeper
 \begin_layout Section*
 Contact
 \end_layout

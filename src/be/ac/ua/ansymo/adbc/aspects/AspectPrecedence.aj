@@ -17,7 +17,11 @@ public aspect AspectPrecedence {
 	/* Contract enforcement aspects must be the very last execution advice at shared join points!
 	 * Do contract enforcement any earlier, and other aspects may intervene and alter
 	 * some values that influence the evaluation of a contract, which is of course undesired. 
+	 * 
+	 * On the other hand, the CallStack helper advice, which stores all call join points in a stack, 
+	 * must be the very first advice to run! Otherwise a user-advice and its contract-advice could
+	 * run before we stored the call join point, and the contract-advice would use incorrect information.
 	 *  
 	 * (The order of Aspect/ClassContractEnforcer doesn't matter; their join points are mutually exclusive.)*/
-	declare precedence: *, AspectContractEnforcer, ClassContractEnforcer;
+	declare precedence: CallStack, *, AspectContractEnforcer, ClassContractEnforcer;
 }
