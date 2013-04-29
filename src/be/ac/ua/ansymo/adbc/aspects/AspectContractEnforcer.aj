@@ -9,6 +9,7 @@
 
 package be.ac.ua.ansymo.adbc.aspects;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.EmptyStackException;
@@ -41,12 +42,12 @@ import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
 public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	private JoinPoint tjp = null;	// The thisjoinpoint object of the user-advice
 	private String advKind;			// User-advice kind (before, after around)
-	
+
 	// Contracts of the user-advice
 	protected String[] advPre;
 	protected String[] advPost;
 	protected String[] advInv;
-	
+
 	private String[] advBySuffix = null;
 
 	/**
@@ -56,7 +57,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	&& !within(be.ac.ua.ansymo.adbc.aspects.*) && excludeContractEnforcers() {
 		/* Very sensitive pointcut! Do not perform any method calls here besides preCheck() and postCheck() 
 		 * or you'll trigger infinite pointcut matching! */
-		
+
 		// Retrieve the thisJoinPoint object of the user-advice
 		try {
 			/* Note that we're peeking into CallStack, not popping! Other contract enforcement
@@ -69,7 +70,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			 * Still need to figure out some way to get access to the join point they advise.. */
 			return proceed(dyn);
 		}
-		
+
 		try {
 			preCheck(thisJoinPoint, dyn);
 			Object result = proceed(dyn);
@@ -90,29 +91,29 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		/* ****************************************************************
 		 * Fetching the necessary info...
 		 **************************************************************** */
-		
+
 		// Retrieve the join point advised by the user-advice 
 		tjp = CallStack.peek();
-		
+
 		// Retrieve the method being advised by the user-advice
 		String m = tjp.getSignature().toString();
 		int lastdot = m.lastIndexOf('.');
 		m = m.substring(lastdot + 1, m.length());
 		Method mBody = ((MethodSignature) tjp.getSignature()).getMethod();
-		
+
 		// Retrieve the user-advice
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
-		
+
 		// Determine whether this advice is mentioned in an @advisedBy clause. And if so, which advice follow in that clause?
 		boolean isAdvisedBy = isAdvisedBy(mBody, aBody);
-		
+
 		// Get the contracts of the user-advice's advised joinpoint
 		// TODO: This currently does not work yet for higher-order advice..
 		pre = new String[]{"true"};
 		post = new String[]{"true"};
 		inv = new String[]{"true"};
-		
+
 		if (mBody.isAnnotationPresent(requires.class)) {
 			pre = mBody.getAnnotation(requires.class).value();
 		}
@@ -122,12 +123,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (tjp.getTarget()!=null && tjp.getTarget().getClass().isAnnotationPresent(invariant.class)) {
 			inv = tjp.getTarget().getClass().getAnnotation(invariant.class).value();
 		}
-		
+
 		// Get the contracts of the user-advice itself
 		advPre = new String[]{"true"};
 		advPost = new String[]{"true"};
 		advInv = new String[]{"true"};
-		
+
 		if (AdbcConfig.checkSubstitutionPrinciple || isAdvisedBy) {
 			if (aBody.isAnnotationPresent(requires.class)) {
 				advPre = aBody.getAnnotation(requires.class).value();
@@ -139,7 +140,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				advInv = dyn.getClass().getAnnotation(invariant.class).value();
 			}
 		}
-		
+
 		// Determine user-advice kind (relying on its internal method name)
 		advKind = "around";
 		if (aSig.getName().contains("$before$")) {
@@ -147,35 +148,25 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		} else if (aSig.getName().contains("$after$")) {
 			advKind = "after";
 		}
-		
+
 		/* ****************************************************************
 		 * Binding contract variables
 		 **************************************************************** */
-		
+
 		// Reset bindings
 		ceval = new ContractInterpreter();
-		
+
 		// Resolve the $proc keyword
 		if(isAdvisedBy && advKind.equals("around")) {
 			pre = ceval.evalProc(advPre, pre);
 			post = ceval.evalProc(advPost, post);
-			
-			Vector<String[]> advByPreSuffix = new Vector<String[]>();
-			for (String adv : advBySuffix) {
-				try {
-					int separator = adv.lastIndexOf('.');
-					String aspectName = adv.substring(0, separator);
-					String adviceName = adv.substring(separator+1, adv.length());
-					
-					Class<?> asp = Class.forName(aspectName);
-					
-				} catch (ClassNotFoundException e) {e.printStackTrace();}
-			}
+
+			getAdvBySuffixContracts("pre");
 		} else {
 			pre = ceval.evalProc(advPre, pre);
 			post = ceval.evalProc(advPost, post);
 		}
-		
+
 		// Evaluate calls to the $old() function in postconditions of advice
 		try {
 			if (AdbcConfig.checkPostconditions) {
@@ -186,18 +177,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		} catch (ScriptException e) {
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
-		
+
 		// Bind parameter values of advised join point
 		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
 		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
-		
+
 		/* ****************************************************************
 		 * Actual contract enforcement
 		 **************************************************************** */
-		
+
 		// Bind the "this" object
 		ceval.setThisBinding(tjp.getTarget());
-		
+
 		// Evaluate calls to the $old() function in postconditions of the advised join point
 		try {
 			if (AdbcConfig.checkPostconditions) {
@@ -206,7 +197,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		} catch (ScriptException e) {
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
-		
+
 		// Test preconditions
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
@@ -214,7 +205,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				throw new PreConditionException(stPreFailed, getCaller());
 			}
 		}
-		
+
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
@@ -225,7 +216,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!isAdvisedBy && AdbcConfig.checkSubstitutionPrinciple) {
 			ceval.setThisBinding(jp.getThis());
 			ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
-			
+
 			String jpPreFailed = ceval.evalContract(advPre);
 			if (jpPreFailed != null) {
 				throw new SubstitutionException(jpPreFailed, jp.getSignature().toString(), "precondition too strong");
@@ -248,12 +239,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!aBody.isAnnotationPresent(AdviceName.class)) {
 			return false;
 		}
-		
+
 		String advName = aBody.getAnnotation(AdviceName.class).value();
 		Class<?> mClass = mBody.getDeclaringClass();
 		Class<?>[] mParTypes = mBody.getParameterTypes();
 		String mName = mBody.getName();
-		
+
 		while(mClass!=null) {
 			try {
 				mBody = mClass.getMethod(mName, mParTypes);
@@ -270,7 +261,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 					}
 				}
 			} catch (Exception e) {/* If the method is not found within mClass, do nothing.. */}
-			
+
 			mClass = mClass.getSuperclass();
 		}
 		return false;
@@ -282,10 +273,10 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	private void postCheck(JoinPoint jp, Object dyn, Object result) throws ScriptException {
 		// Bind the return value
 		ceval.setReturnValueBinding(result);
-		
+
 		// Bind the this object of the advised join point
 		ceval.setThisBinding(tjp.getTarget());
-		
+
 		// Test postconditions
 		if (!advKind.equals("before")) {
 			String stPostFailed = ceval.evalContract(post);
@@ -294,7 +285,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 						.toString());
 			}
 		}
-		
+
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
@@ -304,7 +295,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Test advice substitution
 		if (AdbcConfig.checkSubstitutionPrinciple) {
 			ceval.setThisBinding(jp.getThis());
-			
+
 			String jpPostFailed = ceval.evalContract(advPost);
 			if (jpPostFailed != null) {
 				throw new SubstitutionException(jpPostFailed, jp.getSignature()
@@ -316,6 +307,35 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				throw new InvariantException(invFailed, tjp.getTarget().toString(), "invariant not preserved");
 			}
 		}
+	}
+
+	private Vector<String[]> getAdvBySuffixContracts(String contractKind) {
+		Vector<String[]> advByPreSuffix = new Vector<String[]>();
+		for (String adv : advBySuffix) {
+			try {
+				int separator = adv.lastIndexOf('.');
+				String aspectName = adv.substring(0, separator);
+				String adviceName = adv.substring(separator+1, adv.length());
+
+				Class<?> asp = Class.forName(aspectName);
+				// Find the advice with the name we're looking for
+				for (Method adv2 : asp.getMethods()) {
+					if(adv2.isAnnotationPresent(AdviceName.class)&& adv2.getAnnotation(AdviceName.class).value().equals(adviceName)) {
+						if (contractKind.equals("pre") && adv2.isAnnotationPresent(requires.class)) {
+							advByPreSuffix.add(adv2.getAnnotation(requires.class).value());
+						} else if (contractKind.equals("post") && adv2.isAnnotationPresent(ensures.class)) {
+							advByPreSuffix.add(adv2.getAnnotation(ensures.class).value());
+						}else {
+							String[] proc = {"$proc"};
+							advByPreSuffix.add(proc);
+						}
+					}
+				}
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+		return advByPreSuffix;
 	}
 
 	/*

@@ -3,6 +3,7 @@ package be.ac.ua.ansymo.example_bank.aspects;
 import org.aspectj.lang.annotation.AdviceName;
 
 import be.ac.ua.ansymo.adbc.annotations.ensures;
+import be.ac.ua.ansymo.adbc.annotations.pointcutRuntimeTest;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 import be.ac.ua.ansymo.example_bank.Account;
 import be.ac.ua.ansymo.example_bank.User;

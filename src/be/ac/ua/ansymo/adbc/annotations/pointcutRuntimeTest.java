@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
  * @author Tim Molderez
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value={ElementType.METHOD,ElementType.CONSTRUCTOR})
+@Target(value={ElementType.METHOD})
 public @interface pointcutRuntimeTest {
-	String[] value();
+	String value();
 }

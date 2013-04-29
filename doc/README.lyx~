@@ -537,7 +537,7 @@ Even though advice can have names (using an
 @AdviceName
 \family default
  annotation), AspectJ currently does not support overriding advice, so it's
- of course not possible either to make use of this feature in an 
+ not possible either to make use of them in an 
 \family typewriter
 @advisedBy
 \family default
