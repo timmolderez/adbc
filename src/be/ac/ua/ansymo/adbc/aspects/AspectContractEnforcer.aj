@@ -10,7 +10,9 @@
 package be.ac.ua.ansymo.adbc.aspects;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.EmptyStackException;
+import java.util.Vector;
 
 import javax.script.ScriptException;
 
@@ -44,6 +46,8 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	protected String[] advPre;
 	protected String[] advPost;
 	protected String[] advInv;
+	
+	private String[] advBySuffix = null;
 
 	/**
 	 * Contract enforcer for advice
@@ -100,7 +104,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
 		
-		// Determine whether this advice is mentioned in an @advisedBy clause
+		// Determine whether this advice is mentioned in an @advisedBy clause. And if so, which advice follow in that clause?
 		boolean isAdvisedBy = isAdvisedBy(mBody, aBody);
 		
 		// Get the contracts of the user-advice's advised joinpoint
@@ -155,8 +159,21 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if(isAdvisedBy && advKind.equals("around")) {
 			pre = ceval.evalProc(advPre, pre);
 			post = ceval.evalProc(advPost, post);
-		} else {
 			
+			Vector<String[]> advByPreSuffix = new Vector<String[]>();
+			for (String adv : advBySuffix) {
+				try {
+					int separator = adv.lastIndexOf('.');
+					String aspectName = adv.substring(0, separator);
+					String adviceName = adv.substring(separator+1, adv.length());
+					
+					Class<?> asp = Class.forName(aspectName);
+					
+				} catch (ClassNotFoundException e) {e.printStackTrace();}
+			}
+		} else {
+			pre = ceval.evalProc(advPre, pre);
+			post = ceval.evalProc(advPost, post);
 		}
 		
 		// Evaluate calls to the $old() function in postconditions of advice
@@ -233,11 +250,9 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		}
 		
 		String advName = aBody.getAnnotation(AdviceName.class).value();
-//		System.out.println(advName + mBody);
 		Class<?> mClass = mBody.getDeclaringClass();
 		Class<?>[] mParTypes = mBody.getParameterTypes();
 		String mName = mBody.getName();
-		
 		
 		while(mClass!=null) {
 			try {
@@ -245,10 +260,13 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				// If there's an @advisedBy annotation, go check whether aBody is mentioned..
 				if (mBody.isAnnotationPresent(advisedBy.class)) {
 					String[] advBy = mBody.getAnnotation(advisedBy.class).value();
+					int i=0;
 					for (String listedName : advBy) {
 						if(listedName.equals(aBody.getDeclaringClass().getCanonicalName() + "." + advName)) {
+							advBySuffix = Arrays.copyOfRange(advBy, i, advBy.length);
 							return true;
 						}
+						i++;
 					}
 				}
 			} catch (Exception e) {/* If the method is not found within mClass, do nothing.. */}
