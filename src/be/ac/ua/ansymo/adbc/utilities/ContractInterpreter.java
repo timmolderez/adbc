@@ -92,12 +92,7 @@ public class ContractInterpreter {
 	 * @param jpContracts
 	 */
 	public String[] evalProc(String[] advContracts, String[] jpContracts) {
-		String combined = "";
-		String separator = "";
-		for (String contract : jpContracts) {
-			combined += separator + contract;
-			separator = " && ";
-		}
+		String combined = mergeContracts(jpContracts);
 		
 		int i=0;
 		for (String contract : advContracts) {
@@ -107,9 +102,24 @@ public class ContractInterpreter {
 		return advContracts;
 	}
 	
-	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advBy) {
+	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String[]> advBy) {
+		String combined = mergeContracts(jpContracts);
+		
 		//TODO
 		return null;
+	}
+	
+	/*
+	 * Concatenates an array of contracts (e.g. the preconditions of a method) into one contract, using the && operation
+	 */
+	private String mergeContracts(String[] contracts) {
+		String combined = "";
+		String separator = "";
+		for (String contract : contracts) {
+			combined += separator + contract;
+			separator = " && ";
+		}
+		return combined;
 	}
 	
 	/**

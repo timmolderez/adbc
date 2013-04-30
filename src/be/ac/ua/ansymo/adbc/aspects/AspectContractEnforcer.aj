@@ -158,10 +158,13 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 		// Resolve the $proc keyword
 		if(isAdvisedBy && advKind.equals("around")) {
-			pre = ceval.evalProc(advPre, pre);
-			post = ceval.evalProc(advPost, post);
+			
 
-			getAdvBySuffixContracts("pre");
+			Vector<String[]> suffixPre = getAdvBySuffixContracts("pre");
+			Vector<String[]> suffixPost = getAdvBySuffixContracts("post");
+			
+			pre = ceval.evalProc(advPre, pre, suffixPre);
+			post = ceval.evalProc(advPost, post, suffixPost);
 		} else {
 			pre = ceval.evalProc(advPre, pre);
 			post = ceval.evalProc(advPost, post);
