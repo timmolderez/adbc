@@ -434,11 +434,10 @@ Caveats
 \end_layout
 
 \begin_layout Itemize
-Keep in mind adbc is currently still a proof of concept.
+Keep in mind that adbc is currently still a proof of concept.
  This means some basic features are still missing: attaching invariants
- directly to fields, inheriting contracts from the super class or the advised
- join point.
- The performance of adbc could also be vastly improved with some caching.
+ directly to fields, or inheriting contracts from the super class.
+ The performance of adbc could also be improved with some caching.
 \end_layout
 
 \begin_layout Itemize
@@ -454,8 +453,8 @@ thisjoinpoint
 \end_layout
 
 \begin_layout Itemize
-Checking Liskov substitution currently assumes that overridding methods
- use the same parameter names as the overridden method.
+Checking Liskov substitution currently assumes that overriding methods use
+ the same parameter names as the overridden method.
  (This could be solved using the Paranamer library..)
 \end_layout
 
@@ -464,7 +463,7 @@ There is basic support for the
 \family typewriter
 @advisedBy
 \family default
- annotation/clause, but a few things could be improved:
+ annotation/clause, but several things can be improved:
 \end_layout
 
 \begin_deeper
@@ -473,7 +472,7 @@ An advice mentioned in an
 \family typewriter
 @advisedBy
 \family default
- clause has to be mentioned by its canonical name.
+ clause has to be mentioned by its absolute/canonical name.
  It would be nicer if you could use its simple name (+ an import statement).
 \end_layout
 
@@ -482,7 +481,17 @@ If multiple advice are mentioned in an
 \family typewriter
 @advisedBy
 \family default
- clause, and when resolving the 
+ clause:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+We do not enforce the ordering of the listed advice, but assume this is
+ done by a separate declare precedence statement.
+\end_layout
+
+\begin_layout Itemize
+When resolving the 
 \family typewriter
 $proc
 \family default
@@ -522,15 +531,7 @@ If an advice is mentioned in an
 ing step, as it can be done statically given the source code..
 \end_layout
 
-\begin_layout Itemize
-If multiple advice are mentioned in an 
-\family typewriter
-@advisedBy
-\family default
- clause, we do not enforce the ordering of the listed advice, but assume
- this is done by a separate declare precedence statement.
-\end_layout
-
+\end_deeper
 \begin_layout Itemize
 Even though advice can have names (using an 
 \family typewriter
