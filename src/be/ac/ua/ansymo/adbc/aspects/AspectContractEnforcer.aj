@@ -26,6 +26,7 @@ import be.ac.ua.ansymo.adbc.AdbcConfig;
 import be.ac.ua.ansymo.adbc.annotations.advisedBy;
 import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.invariant;
+import be.ac.ua.ansymo.adbc.annotations.pointcutRuntimeTest;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 import be.ac.ua.ansymo.adbc.exceptions.InvariantException;
 import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
@@ -49,6 +50,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	protected String[] advInv;
 
 	private String[] advBySuffix = null;
+	private Vector<String> advByRuntimeTests = null;
 
 	/**
 	 * Contract enforcer for advice
@@ -163,8 +165,8 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			Vector<String[]> suffixPre = getAdvBySuffixContracts("pre");
 			Vector<String[]> suffixPost = getAdvBySuffixContracts("post");
 			
-			pre = ceval.evalProc(advPre, pre, suffixPre);
-			post = ceval.evalProc(advPost, post, suffixPost);
+			pre = ceval.evalProc(advPre, pre, suffixPre, advByRuntimeTests);
+			post = ceval.evalProc(advPost, post, suffixPost, advByRuntimeTests);
 		} else {
 			pre = ceval.evalProc(advPre, pre);
 			post = ceval.evalProc(advPost, post);
@@ -312,8 +314,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		}
 	}
 
+	/*
+	 * Given an advice mentioned in an @advisedBy clause, return 
+	 * the pre- or postconditions of all advice that follow in that clause
+	 * Additionally, the advByRuntimeTests array is filled with the runtime tests of these advice.
+	 * 
+	 * @param contractKind	"pre" or "post"
+	 * @return	the pre-or postconditions of all following advice
+	 */
 	private Vector<String[]> getAdvBySuffixContracts(String contractKind) {
-		Vector<String[]> advByPreSuffix = new Vector<String[]>();
+		Vector<String[]> result = new Vector<String[]>();
+		advByRuntimeTests = new Vector<String>();
+		
 		for (String adv : advBySuffix) {
 			try {
 				int separator = adv.lastIndexOf('.');
@@ -325,12 +337,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				for (Method adv2 : asp.getMethods()) {
 					if(adv2.isAnnotationPresent(AdviceName.class)&& adv2.getAnnotation(AdviceName.class).value().equals(adviceName)) {
 						if (contractKind.equals("pre") && adv2.isAnnotationPresent(requires.class)) {
-							advByPreSuffix.add(adv2.getAnnotation(requires.class).value());
+							result.add(adv2.getAnnotation(requires.class).value());
 						} else if (contractKind.equals("post") && adv2.isAnnotationPresent(ensures.class)) {
-							advByPreSuffix.add(adv2.getAnnotation(ensures.class).value());
+							result.add(adv2.getAnnotation(ensures.class).value());
 						}else {
 							String[] proc = {"$proc"};
-							advByPreSuffix.add(proc);
+							result.add(proc);
+						}
+						
+						if(adv2.isAnnotationPresent(pointcutRuntimeTest.class)) {
+							advByRuntimeTests.add(adv2.getAnnotation(pointcutRuntimeTest.class).value());
+						} else {
+							advByRuntimeTests.add("true");
 						}
 					}
 				}
@@ -338,7 +356,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				e.printStackTrace();
 			}
 		}
-		return advByPreSuffix;
+		return result;
 	}
 
 	/*

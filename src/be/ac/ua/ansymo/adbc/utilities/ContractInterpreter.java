@@ -92,21 +92,65 @@ public class ContractInterpreter {
 	 * @param jpContracts
 	 */
 	public String[] evalProc(String[] advContracts, String[] jpContracts) {
-		String combined = mergeContracts(jpContracts);
+		String proc = mergeContracts(jpContracts);
 		
 		int i=0;
 		for (String contract : advContracts) {
-			advContracts[i]=contract.replaceAll(procKeyword, combined);
+			advContracts[i]=contract.replaceAll(procKeyword, proc);
 			i++;
 		}
 		return advContracts;
 	}
 	
-	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String[]> advBy) {
-		String combined = mergeContracts(jpContracts);
+	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
+		return evalProc_pr(-1, advContracts, jpContracts, advByContracts, advByRuntimeTests);
+	}
+	
+	private String[] evalProc_pr(int i, String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
+		String[] result = new String[advContracts.length];
 		
-		//TODO
-		return null;
+		String proc = evalProc_ab(i+1, jpContracts, advByContracts, advByRuntimeTests);
+		
+		int j=0;
+		for (String contract : advContracts) {
+			result[j] = contract.replaceAll(procKeyword, proc);
+			j++;
+		}
+		return result;
+	}
+	
+	private String evalProc_ab(int i, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
+		// Base case
+		if (i==advByContracts.size()) {
+			return mergeContracts(jpContracts);
+		}
+		
+		// Recursive case
+		String result="";
+		int j=i;
+		String separator = "if(";
+		while(j<advByRuntimeTests.size() && !advByRuntimeTests.get(j).equals("true")) {
+			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests));
+			result += separator + advByRuntimeTests.get(j) + "){" + proc  + "}";
+			
+					separator = "else if(";
+			j++;
+		}
+		
+		// If we exited the loop because the jth entry is "true", the remaining advice after j are unreachable..
+		if(j != advByRuntimeTests.size()) { 
+			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests));
+			if(j==0) {
+				result = proc;
+			} else {
+				result += " else {" + proc + "}";
+			}
+		// If we exited the loop because we processed all advice in the @advisedBy clause
+		} else {
+			result += " else {" + mergeContracts(jpContracts) + "}";
+		}
+		
+		return result;
 	}
 	
 	/*
