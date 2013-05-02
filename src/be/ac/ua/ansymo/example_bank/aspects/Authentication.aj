@@ -18,9 +18,8 @@ public aspect Authentication {
 		return loggedIn;
 	}
 	
-	@requires("to!=null")
-	@ensures({"from.getOwner().isLoggedIn()?from.getAmount()==$old(from.getAmount())-amount:false",
-		"from.getOwner().isLoggedIn()?to.getAmount()==$old(to.getAmount())+amount:false"})
+	@requires("$proc")
+	@ensures({"from.getOwner().isLoggedIn()?$proc:false"})
 	@AdviceName("authenticate")
 	void around(Account from, double amount, Account to): call(void Account.transfer(double, Account)) 
 	&& args(amount, to) && target(from) {

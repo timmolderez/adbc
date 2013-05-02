@@ -64,6 +64,16 @@ public class ContractInterpreter {
 	}
 	
 	/**
+	 * Set a binding to a "this" object, suffixed with a given number
+	 * (This can be useful if multiple this objects from different contexts are used in the same contract..)
+	 * @param t		the this object to be bound
+	 * @param i		number of the object
+	 */
+	public void setThisBinding(Object t, int i) {
+		engine.put(thisKeyword + i, t);
+	}
+	
+	/**
 	 * Set a binding to the return value, available as the $result variable in postconditions
 	 * @param t
 	 */
@@ -96,7 +106,7 @@ public class ContractInterpreter {
 		
 		int i=0;
 		for (String contract : advContracts) {
-			advContracts[i]=contract.replaceAll(procKeyword, proc);
+			advContracts[i]=contract.replace(procKeyword, proc);
 			i++;
 		}
 		return advContracts;

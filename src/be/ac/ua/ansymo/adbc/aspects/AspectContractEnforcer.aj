@@ -9,7 +9,6 @@
 
 package be.ac.ua.ansymo.adbc.aspects;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.EmptyStackException;
@@ -17,6 +16,7 @@ import java.util.Vector;
 
 import javax.script.ScriptException;
 
+import org.aspectj.lang.Aspects;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AdviceName;
 import org.aspectj.lang.reflect.AdviceSignature;
@@ -160,12 +160,11 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 		// Resolve the $proc keyword
 		if(isAdvisedBy && advKind.equals("around")) {
-			
-
 			Vector<String[]> suffixPre = getAdvBySuffixContracts("pre");
 			Vector<String[]> suffixPost = getAdvBySuffixContracts("post");
 			
 			pre = ceval.evalProc(advPre, pre, suffixPre, advByRuntimeTests);
+			
 			post = ceval.evalProc(advPost, post, suffixPost, advByRuntimeTests);
 		} else {
 			pre = ceval.evalProc(advPre, pre);
@@ -333,6 +332,8 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				String adviceName = adv.substring(separator+1, adv.length());
 
 				Class<?> asp = Class.forName(aspectName);
+				Object bla = Aspects.aspectOf(asp);
+				
 				// Find the advice with the name we're looking for
 				for (Method adv2 : asp.getMethods()) {
 					if(adv2.isAnnotationPresent(AdviceName.class)&& adv2.getAnnotation(AdviceName.class).value().equals(adviceName)) {
