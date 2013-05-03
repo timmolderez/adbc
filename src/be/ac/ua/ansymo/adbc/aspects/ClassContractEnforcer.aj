@@ -301,7 +301,6 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		} catch (NoSuchMethodException e) {
 			return true;
 		}
-		
 	}
 
 }

@@ -18,19 +18,19 @@ import javax.script.ScriptException;
 import be.ac.ua.ansymo.adbc.AdbcConfig;
 
 /**
- * Helper class used to evaluate contracts 
+ * Helper class used to evaluate contracts of classes and aspects
  * @author Tim Molderez
  */
 public class ContractInterpreter {
-	
+
 	private ScriptEngine engine;
 	private int oldCounter;
-	
+
 	private static String thisKeyword = AdbcConfig.keywordPrefix + "this";
 	private static String resultKeyword = AdbcConfig.keywordPrefix + "result";
 	private static String oldKeyword = AdbcConfig.keywordPrefix + "old";
 	private static String procKeyword = AdbcConfig.keywordPrefix + "proc";
-	
+
 	/**
 	 * Default constructor
 	 */
@@ -38,7 +38,7 @@ public class ContractInterpreter {
 		ScriptEngineManager manager = new ScriptEngineManager();
 		engine = manager.getEngineByName(AdbcConfig.engine);
 	}
-	
+
 	/**
 	 * Evaluates a series of contracts.
 	 * @param contracts to be evaluated
@@ -54,7 +54,7 @@ public class ContractInterpreter {
 		}
 		return null;
 	}
-		
+
 	/**
 	 * Set a binding to the "this" object, available as the $this variable in contracts
 	 * @param t		the this object to be bound
@@ -62,7 +62,7 @@ public class ContractInterpreter {
 	public void setThisBinding(Object t) {
 		engine.put(thisKeyword, t);
 	}
-	
+
 	/**
 	 * Set a binding to a "this" object, suffixed with a given number
 	 * (This can be useful if multiple this objects from different contexts are used in the same contract..)
@@ -72,7 +72,7 @@ public class ContractInterpreter {
 	public void setThisBinding(Object t, int i) {
 		engine.put(thisKeyword + i, t);
 	}
-	
+
 	/**
 	 * Set a binding to the return value, available as the $result variable in postconditions
 	 * @param t
@@ -80,7 +80,7 @@ public class ContractInterpreter {
 	public void setReturnValueBinding(Object t) {
 		engine.put(resultKeyword, t);
 	}
-	
+
 	/**
 	 * Bind the parameters that can occur in a contract
 	 * @param names		names of each parameter, may be null 
@@ -96,73 +96,90 @@ public class ContractInterpreter {
 			}
 		}
 	}
-	
+
 	/**
-	 * Evaluate the proc keyword, in case an advice is *not* mentioned in an @advisedBy clause 
-	 * @param jpContracts
+	 * Evaluate $proc, in case an advice is *not* mentioned in an @advisedBy clause
+	 * Additionally, occurences of $this in $proc are bound as well. 
+	 * @param advContracts	contracts of the user-advice
+	 * @param jpContracts	contracts of the advised join point
+	 * @return
 	 */
-	public String[] evalProc(String[] advContracts, String[] jpContracts) {
+	public String[] evalProc(String[] advContracts, String[] jpContracts, Object aspThis) {
 		String proc = mergeContracts(jpContracts);
-		
+		setThisBinding(aspThis, 1);
+
 		int i=0;
 		for (String contract : advContracts) {
+			contract.replace(thisKeyword, thisKeyword + "1");
+
 			advContracts[i]=contract.replace(procKeyword, proc);
 			i++;
 		}
 		return advContracts;
 	}
-	
-	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
-		return evalProc_pr(-1, advContracts, jpContracts, advByContracts, advByRuntimeTests);
+
+	/**
+	 * Evaluate $proc, in case an advice *is* mentioned in an @advisedBy clause
+	 * Additionally, occurences of $this in $proc are bound as well.
+	 * @param advContracts			contracts of the user-advice
+	 * @param jpContracts			contracts of the advised join point
+	 * @param advByContracts		contracts of all advice that follow in the @advisedBy clause
+	 * @param advByRuntimeTests		pointcut runtime tests of all advice that follow in the @advisedBy clause
+	 * @param aspThis				this objects of the user-advice itself, plus all advice that follow in the @advisedBy clause
+	 * @return						
+	 */
+	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
+		return evalProc_pr(-1, advContracts, jpContracts, advByContracts, advByRuntimeTests, aspThis);
 	}
-	
-	private String[] evalProc_pr(int i, String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
+
+	private String[] evalProc_pr(int i, String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
 		String[] result = new String[advContracts.length];
-		
-		String proc = evalProc_ab(i+1, jpContracts, advByContracts, advByRuntimeTests);
-		
+
+		String proc = evalProc_ab(i+1, jpContracts, advByContracts, advByRuntimeTests, aspThis);
+		setThisBinding(aspThis.get(i+1), i+1);
+
 		int j=0;
 		for (String contract : advContracts) {
-			result[j] = contract.replaceAll(procKeyword, proc);
+			contract.replace(thisKeyword, thisKeyword + (i+1));
+			result[j] = contract.replace(procKeyword, proc);
 			j++;
 		}
 		return result;
 	}
-	
-	private String evalProc_ab(int i, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests) {
+
+	private String evalProc_ab(int i, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
 		// Base case
 		if (i==advByContracts.size()) {
 			return mergeContracts(jpContracts);
 		}
-		
+
 		// Recursive case
 		String result="";
 		int j=i;
 		String separator = "if(";
 		while(j<advByRuntimeTests.size() && !advByRuntimeTests.get(j).equals("true")) {
-			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests));
+			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests, aspThis));
 			result += separator + advByRuntimeTests.get(j) + "){" + proc  + "}";
-			
-					separator = "else if(";
+			separator = "else if(";
 			j++;
 		}
-		
+
 		// If we exited the loop because the jth entry is "true", the remaining advice after j are unreachable..
 		if(j != advByRuntimeTests.size()) { 
-			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests));
+			String proc = mergeContracts(evalProc_pr(j, advByContracts.get(j), jpContracts, advByContracts, advByRuntimeTests, aspThis));
 			if(j==0) {
 				result = proc;
 			} else {
 				result += " else {" + proc + "}";
 			}
-		// If we exited the loop because we processed all advice in the @advisedBy clause
+			// If we exited the loop because we processed all advice in the @advisedBy clause
 		} else {
 			result += " else {" + mergeContracts(jpContracts) + "}";
 		}
-		
+
 		return result;
 	}
-	
+
 	/*
 	 * Concatenates an array of contracts (e.g. the preconditions of a method) into one contract, using the && operation
 	 */
@@ -175,7 +192,7 @@ public class ContractInterpreter {
 		}
 		return combined;
 	}
-	
+
 	/**
 	 * Evaluates all calls to the old() function in a postcondition (may be composed of multiple parts)
 	 * @param postCondition	the postcondition
@@ -190,7 +207,7 @@ public class ContractInterpreter {
 		}
 		return result;
 	}
-	
+
 	/*
 	 * Recursive helper function for evalOldFunction()
 	 */
@@ -201,7 +218,7 @@ public class ContractInterpreter {
 			return expr;
 		}
 		openPos +=5; // Get the index right behind the starting bracket of the old function
-		
+
 		// Find the index of the matching closing bracket
 		int bracketMatcher = 1;
 		int i = openPos;
@@ -216,10 +233,10 @@ public class ContractInterpreter {
 
 		if (bracketMatcher==0) {
 			oldCounter++;
-			
+
 			Object oldResult = engine.eval(expr.substring(openPos, i-1));
 			engine.put(oldKeyword + oldCounter, oldResult);
-			
+
 			// Return the part before the first old() call + the result of the old() call + recursion on the remainder.
 			return expr.substring(0, openPos-5) 
 					+ oldKeyword + oldCounter 
