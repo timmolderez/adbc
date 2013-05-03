@@ -1,7 +1,7 @@
 adbc - Design by Contract for AspectJ
 =====================================
 
-![adbc logo](https://raw.github.com/timmolderez/adbc/doc/adbc.png)
+![adbc logo](https://raw.github.com/timmolderez/adbc/master/doc/adbc.png)
 
 Adbc is a small and lightweight library that adds support for [Design by Contract](http://en.wikipedia.org/wiki/Design_by_contract) to the [AspectJ](http://eclipse.org/aspectj/) programming language.
 
@@ -17,4 +17,4 @@ Adbc is a small and lightweight library that adds support for [Design by Contrac
 ## Usage
 
 When using Eclipse+AJDT, just add `adbc.jar` to your project's InPath and you can start writing contracts (using the annotations in `be.ac.ua.ansymo.adbc.annotations`). Contract enforcement is automatically enabled, and can be disabled if needed via the `AdbcConfig` class. 
-For more information, be sure to have a look at adbc's [documentation](https://raw.github.com/timmolderez/adbc/doc/README.pdf).
+For more information, be sure to have a look at adbc's [documentation](https://raw.github.com/timmolderez/adbc/master/doc/README.pdf).
