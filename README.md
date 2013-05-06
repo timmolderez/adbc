@@ -5,9 +5,11 @@ adbc - Design by Contract for AspectJ
 
 Adbc is a small and lightweight library that adds support for [Design by Contract](http://en.wikipedia.org/wiki/Design_by_contract) to the [AspectJ](http://eclipse.org/aspectj/) programming language.
 
-- Just add the library to your AspectJ project and contracts will be enforced at runtime. Whenever a contract is broken, an exception is thrown which also indicates who is to blame.
+- Add the library to your AspectJ project and contracts will be enforced at runtime. Whenever a contract is broken, an exception is thrown which also indicates who is to blame.
 - Contract enforcement is guided by the [Liskov](http://en.wikipedia.org/wiki/Liskov_substitution_principle) and [advice substitution principle](http://dl.acm.org/citation.cfm?id=2162015). If an advice's contracts do not interfere with the contracts of the methods being advised, that advice satisfies the advice substitution principle. In this case, no extra effort is needed to preserve modular reasoning. In case an advice does break the principle, modular reasoning is restored by explicitly mentioning that advice's name in an `@advisedBy` annotation at each method it advises.
 - Contracts are written as Javascript expressions within Java annotations. (The library uses the JSR 223 API, so you can easily configure which scripting engine is used to evaluate the contracts.)
+
+### [Download adbc](http://timmolderez.be/builds/adbc/)
 
 ## Requirements
 
