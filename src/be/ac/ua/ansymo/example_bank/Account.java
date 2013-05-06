@@ -40,11 +40,11 @@ public class Account {
 		"$this.getAmount()==$old($this.getAmount())-amount",
 		"to.getAmount()==$old(to.getAmount())+amount"
 		})
-	@advisedBy("be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate")
+	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Security.authenticate",
+		"be.ac.ua.ansymo.example_bank.aspects.Security.authorize"})
 	public void transfer(double amount, Account to) {
 		withdraw(amount);
 		to.deposit(amount);
-		
 	}
 	
 	public double getAmount() {

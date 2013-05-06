@@ -1,6 +1,6 @@
 package be.ac.ua.ansymo.example_bank;
 
-import be.ac.ua.ansymo.example_bank.aspects.Authentication;
+import be.ac.ua.ansymo.example_bank.aspects.Security;
 
 /**
  * A simple demo application to demonstrate the use of the contract enforcer
@@ -20,6 +20,7 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		try {
+//			AdbcConfig.enforceContracts = false;
 //			AdbcConfig.engine = "JavaScript";
 //			AdbcConfig.keywordPrefix = "$";
 			
@@ -37,7 +38,7 @@ public class Main {
 		User u2 = new User("Jake");
 		Account u2acc1 = new Account(30.0, u2);
 		
-		Authentication.login(u1, "Peebles"); // Comment this out and Authentication will break the postcondition of its advised join point
+		Security.login(u1, "Peebles"); // Comment this out and Authentication will break the postcondition of its advised join point
 		
 		u1acc1.transfer(5.0, u2acc1);
 		

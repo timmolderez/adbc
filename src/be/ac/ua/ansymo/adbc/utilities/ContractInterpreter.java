@@ -54,6 +54,17 @@ public class ContractInterpreter {
 		}
 		return null;
 	}
+	
+	/**
+	 * Evaluate an expression in the current context
+	 * (used for testing/debugging purposes)
+	 * @param expression
+	 * @return
+	 * @throws ScriptException
+	 */
+	public Object eval(String expression) throws ScriptException {
+		return engine.eval(expression);
+	}
 
 	/**
 	 * Set a binding to the "this" object, available as the $this variable in contracts
@@ -110,7 +121,7 @@ public class ContractInterpreter {
 
 		int i=0;
 		for (String contract : advContracts) {
-			contract.replace(thisKeyword, thisKeyword + "1");
+			contract = contract.replace(thisKeyword, thisKeyword + "1");
 
 			advContracts[i]=contract.replace(procKeyword, proc);
 			i++;
@@ -140,7 +151,7 @@ public class ContractInterpreter {
 
 		int j=0;
 		for (String contract : advContracts) {
-			contract.replace(thisKeyword, thisKeyword + (i+1));
+			contract = contract.replace(thisKeyword, thisKeyword + (i+1));
 			result[j] = contract.replace(procKeyword, proc);
 			j++;
 		}

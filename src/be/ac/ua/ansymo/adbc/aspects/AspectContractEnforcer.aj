@@ -158,9 +158,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 		// Reset bindings
 		ceval = new ContractInterpreter();
-		
-		// Bind $this to the advised method's this object
-		ceval.setThisBinding(tjp.getTarget());
 
 		// Resolve the $proc keyword + $this variable binding (of user advice's this object)
 		if(isAdvisedBy && advKind.equals("around")) {
@@ -172,25 +169,27 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advPre = ceval.evalProc(advPre, pre, jp.getThis());
 			advPost = ceval.evalProc(advPost, post, jp.getThis());
 		}
+		
+		// Bind $this to the advised method's this object
+		ceval.setThisBinding(tjp.getTarget());
+		
+		// Bind parameter values of advised join point and the advice itself
+		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
+		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
+		ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
 
 		// Evaluate calls to the $old() function in postconditions of advice
 		try {
-			if (AdbcConfig.checkPostconditions) {
-				ceval.setThisBinding(jp.getThis());
-				ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
+			if (AdbcConfig.checkPostconditions && !isAdvisedBy && AdbcConfig.checkSubstitutionPrinciple) {
 				advPost = ceval.evalOldFunction(advPost);
 			}
 		} catch (ScriptException e) {
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
 
-		// Bind parameter values of advised join point
-		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
-		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
-
 		// Evaluate calls to the $old() function in postconditions of the advised join point
 		try {
-			if (AdbcConfig.checkPostconditions) {
+			if (AdbcConfig.checkPostconditions) {	
 				post = ceval.evalOldFunction(post);
 			}
 		} catch (ScriptException e) {
@@ -200,7 +199,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		/* ****************************************************************
 		 * Actual contract enforcement
 		 **************************************************************** */
-
+		
 		// Test preconditions
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
@@ -208,7 +207,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				throw new PreConditionException(stPreFailed, getCaller());
 			}
 		}
-
+		
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
@@ -357,7 +356,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 					int i=0;
 					for (String listedName : advBy) {
 						if(listedName.equals(aBody.getDeclaringClass().getCanonicalName() + "." + advName)) {
-							return Arrays.copyOfRange(advBy, i, advBy.length);
+							return Arrays.copyOfRange(advBy, i+1, advBy.length);
 						}
 						i++;
 					}

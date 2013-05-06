@@ -347,6 +347,31 @@ $old(expr)
  field with the new value.
 \end_layout
 
+\begin_layout Description
+
+\family typewriter
+$proc
+\family default
+ Depending on whether this keyword is used in the pre-or postconditions
+ of an around advice, 
+\family typewriter
+$proc
+\family default
+ usually refers to the pre-or postconditions of the method being advised.
+ In general, 
+\family typewriter
+$proc
+\family default
+ refers to the pre-or postconditions of the body that you *know* will be
+ executed next when making a proceed call.
+ The emphasis on *know* indicates that you should only be aware of any advice
+ that have been mentioned explicitly in an 
+\family typewriter
+@advisedBy
+\family default
+ annotation of the advised method.
+\end_layout
+
 \begin_layout Standard
 With contract enforcement enabled, contracts are checked at runtime, as
  well as whether methods/advice are adhering to the Liskov/advice substitution
