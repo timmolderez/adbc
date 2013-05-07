@@ -95,8 +95,12 @@ Adbc is a small and lightweight library that adds support for Design by
 Requirements
 \end_layout
 
-\begin_layout Standard
-Java 6 (or later) and AspectJ (tested on 1.6.12) are required.
+\begin_layout Itemize
+Java 6 (or later)
+\end_layout
+
+\begin_layout Itemize
+AspectJ (tested on versions 1.6.12 and 1.7.2) are required
 \end_layout
 
 \begin_layout Section*
@@ -110,8 +114,11 @@ adbc.jar
 \family default
  on the build path of your AspectJ project and contract enforcement should
  be enabled automatically.
- More specifically, if you are using Eclipse+AJDT, right-click your AspectJ
- project, go to 
+ More specifically, if you are using Eclipse+AJDT:
+\end_layout
+
+\begin_layout Itemize
+Right-click your AspectJ project and go to 
 \begin_inset Quotes eld
 \end_inset
 
@@ -119,7 +126,11 @@ Properties
 \begin_inset Quotes erd
 \end_inset
 
-, 
+.
+\end_layout
+
+\begin_layout Itemize
+Go to 
 \begin_inset Quotes eld
 \end_inset
 
@@ -135,7 +146,12 @@ InPath
 \begin_inset Quotes erd
 \end_inset
 
- and click the 
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+Click the 
 \begin_inset Quotes eld
 \end_inset
 
@@ -144,12 +160,19 @@ Add (External) JARs...
 \end_inset
 
  button.
- (See the Caveats section if an exception is thrown.)
+ (See the 
+\begin_inset CommandInset ref
+LatexCommand nameref
+reference "sec:Caveats"
+
+\end_inset
+
+ section if an exception is thrown.)
 \end_layout
 
 \begin_layout Standard
-Because the aspects within adbc can advise any method call and advice execution,
- you probably want to hide its advice markers.
+Note that, because the aspects of adbc can advise any method call and advice
+ execution, you probably want to hide its advice markers.
  You can do this in AJDT by right-clicking any advice marker, then go to
  
 \begin_inset Quotes eld
@@ -168,6 +191,11 @@ Configure advice markers...
 \end_inset
 
 .
+ Just set the icon for all aspects in the 
+\family typewriter
+be.ac.ua.ansymo.adbc
+\family default
+ package to None.
 \end_layout
 
 \begin_layout Standard
@@ -184,31 +212,122 @@ Usage
 \end_layout
 
 \begin_layout Standard
-Contracts are specified as Java annotations: You can specify preconditions
- (
+Contracts are specified as Java annotations.
+ Adbc makes use of the following annotations:
+\end_layout
+
+\begin_layout Description
+
 \family typewriter
 @requires
 \family default
-), postconditions (
+ Specifies the preconditions of a method, a constructor or an advice.
+ This annotation takes one or more strings as its value, where each string
+ is a contract specified as a boolean expression
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+By default, this boolean expression is written in Javascript, though other
+ languages can be used by changing the scripting engine.
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+
 \family typewriter
 @ensures
 \family default
-) and invariants (
+ Specifies the postconditions of a method, a contstructor or an advice.
+\end_layout
+
+\begin_layout Description
+
 \family typewriter
 @invariant
 \family default
-).
- Pre -and postcondition annotations are specified at the level of methods
- and advice.
- Invariants are specified at the level of classes and aspects.
+ Specifies the invariants of a class or an aspect.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+@advisedBy
+\family default
+ Specifies that a method 
+\emph on
+expects
+\emph default
+ to be advised by the listed advice, in the given order.
+ This annotation can only be attached to methods, and has one or more strings
+ as its value.
+ Each string should contain the canonical/absolute name of an advice.
+ Note that an 
+\family typewriter
+@advisedBy
+\family default
+ annotation on a method is implicitly inherited by any overriding methods
+ in subclasses.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+@pointcutRuntimeTest
+\family default
+ If an advice is mentioned in an 
+\family typewriter
+@advisedBy
+\family default
+ clause, and its pointcut contains constructs that can only be determined
+ at runtime (e.g.
+ 
+\family typewriter
+if
+\family default
+, 
+\family typewriter
+cflow
+\family default
+), you should attach this annotation to the advice and copy these runtime
+ tests into the annotation's value.
+ (This information is completely redundant, but adbc currently makes use
+ of this annotation because all pointcut-related information is lost after
+ weaving.)
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+@AdviceName
+\family default
+ This annotation is part of AspectJ itself, and is used to give a name to
+ an advice.
+ An advice is required to have a name if you want to mention it in an 
+\family typewriter
+@advisedBy
+\family default
+ annotation.
 \end_layout
 
 \begin_layout Standard
+\begin_inset Note Note
+status collapsed
+
+\begin_layout Plain Layout
 The contracts themselves are written in the form of Javascript expressions,
  as a String parameter of the annotation.
  If a contract consists of multiple parts, you can also pass an array of
  Strings.
- The following example of a simple 
+\end_layout
+
+\end_inset
+
+The following example of a simple 
 \family typewriter
 Square
 \family default
@@ -280,7 +399,7 @@ class Square {
 
 \begin_layout Plain Layout
 
-			""$this.getY()==$old($this.getY())+y"")
+			"$this.getY()==$old($this.getY())+y")
 \end_layout
 
 \begin_layout Plain Layout
@@ -308,7 +427,7 @@ class Square {
 \end_layout
 
 \begin_layout Standard
-This example features all the different constructs that can be accessed
+This example features some of the different constructs that can be accessed
  from a contract:
 \end_layout
 
@@ -407,15 +526,16 @@ Configuration
 \end_layout
 
 \begin_layout Standard
-To tweak the impact that adbc has on program performance, the library can
- be configured by modifying the static fields in the 
+Adbc exposes a few configuration options, such as enabling/disabling contract
+ enforcement, whether or not postconditions or the substitution principle
+ should be checked, or which scripting engine should be used to evaluate
+ contracts.
+ These options can be configured by simply modifying the static fields in
+ the 
 \family typewriter
 AdbcConfig
 \family default
  class.
- You can alter these fields at any time to disable contract enforcement
- entirely, disable postcondition checking or disable substitution principle
- checking.
 \end_layout
 
 \begin_layout Section*
@@ -455,6 +575,12 @@ If parameter names are not available in contracts, try passing the "-g:var"
 \end_layout
 
 \begin_layout Section*
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Caveats"
+
+\end_inset
+
 Caveats
 \end_layout
 
