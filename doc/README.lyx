@@ -114,7 +114,7 @@ adbc.jar
 \family default
  on the build path of your AspectJ project and contract enforcement should
  be enabled automatically.
- More specifically, if you are using Eclipse+AJDT:
+ If you're using Eclipse+AJDT, this is done as follows:
 \end_layout
 
 \begin_layout Itemize
@@ -159,22 +159,42 @@ Add (External) JARs...
 \begin_inset Quotes erd
 \end_inset
 
- button.
- (See the 
+ button and select the 
+\family typewriter
+adbc.jar
+\family default
+ file.
+\begin_inset Newline newline
+\end_inset
+
+(If an exception is thrown, check the 
 \begin_inset CommandInset ref
 LatexCommand nameref
-reference "sec:Caveats"
+reference "sec:Troubleshooting"
 
 \end_inset
 
- section if an exception is thrown.)
+ section.)
+\end_layout
+
+\begin_layout Itemize
+Close the Properties window with the OK button.
+ You can now start writing contracts using the annotations available in
+ the 
+\family typewriter
+be.ac.ua.ansymo.adbc.annotations
+\family default
+ package.
 \end_layout
 
 \begin_layout Standard
-Note that, because the aspects of adbc can advise any method call and advice
- execution, you probably want to hide its advice markers.
- You can do this in AJDT by right-clicking any advice marker, then go to
- 
+Note that, because the aspects of adbc can advise 
+\emph on
+any
+\emph default
+ method call and advice execution, you probably want to hide AJDT's advice
+ markers for those aspects.
+ You can do this by right-clicking your AspectJ project, then go to 
 \begin_inset Quotes eld
 \end_inset
 
@@ -191,7 +211,7 @@ Configure advice markers...
 \end_inset
 
 .
- Just set the icon for all aspects in the 
+ Finally set the icon for all aspects in the 
 \family typewriter
 be.ac.ua.ansymo.adbc
 \family default
@@ -199,8 +219,8 @@ be.ac.ua.ansymo.adbc
 \end_layout
 
 \begin_layout Standard
-If you want to tinker with adbc on a small toy project before enabling it
- on your own projects, just have a look at the included example in the 
+If you'd like to tinker with adbc on a small toy project before enabling
+ it on your own projects, have a look at the included example in the 
 \family typewriter
 adbc/source/src/be/ac/ua/ansymo/example_bank
 \family default
@@ -212,7 +232,7 @@ Usage
 \end_layout
 
 \begin_layout Standard
-Contracts are specified as Java annotations.
+Contracts in adbc are specified using Java annotations.
  Adbc makes use of the following annotations:
 \end_layout
 
@@ -242,7 +262,7 @@ By default, this boolean expression is written in Javascript, though other
 \family typewriter
 @ensures
 \family default
- Specifies the postconditions of a method, a contstructor or an advice.
+ Specifies the postconditions of a method, a constructor or an advice.
 \end_layout
 
 \begin_layout Description
@@ -327,6 +347,104 @@ The contracts themselves are written in the form of Javascript expressions,
 
 \end_inset
 
+When writing contracts, the following variables and functions are available:
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+$this
+\family default
+ The this object
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+parameters
+\family default
+ You can simply access method/advice parameters via their name
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+$result
+\family default
+ The return value of a method/advice, available in postconditions
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+$old(expr)
+\family default
+ The old function evaluates an expression before the method/advice is executed,
+ stores the result, such that it is available in postconditions.
+ This is useful if, for example, you want to compare the old value of a
+ field with the new value.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
+$proc
+\family default
+ Depending on whether this keyword is used in the pre-or postconditions
+ of an around advice, 
+\family typewriter
+$proc
+\family default
+ usually refers to the pre-or postconditions of the method being advised.
+ In general, 
+\family typewriter
+$proc
+\family default
+ refers to the pre-or postconditions of the body that you *know* will be
+ executed next when making a proceed call.
+ The emphasis on *know* indicates that you should only be aware of any advice
+ that have been mentioned explicitly in an 
+\family typewriter
+@advisedBy
+\family default
+ annotation of the advised method.
+\end_layout
+
+\begin_layout Standard
+With contract enforcement enabled, contracts are checked at runtime, as
+ well as whether methods/advice are adhering to the Liskov/advice substitution
+ principle.
+ (For more information on Liskov substitution, just have a look at 
+\begin_inset CommandInset href
+LatexCommand href
+name "Wikipedia"
+target "http://en.wikipedia.org/wiki/Liskov_substitution_principle"
+
+\end_inset
+
+.
+ For more information on advice substitution, which is essentially Liskov
+ substitution for aspects, have a look at section 3 in the paper 
+\begin_inset CommandInset href
+LatexCommand href
+name "\"Design by Contract for Aspects, by Aspects\""
+target "http://dl.acm.org/citation.cfm?id=2162015"
+
+\end_inset
+
+.) Whenever a contract is broken, a 
+\family typewriter
+ContractEnforcementException
+\family default
+ is thrown, indicating which part of the contract was broken, and who is
+ to blame.
+\end_layout
+
+\begin_layout Section*
+Examples
+\end_layout
+
+\begin_layout Standard
 The following example of a simple 
 \family typewriter
 Square
@@ -338,7 +456,7 @@ Square
 \begin_inset listings
 lstparams "basicstyle={\small\ttfamily},tabsize=2"
 inline false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 
@@ -426,101 +544,6 @@ class Square {
 
 \end_layout
 
-\begin_layout Standard
-This example features some of the different constructs that can be accessed
- from a contract:
-\end_layout
-
-\begin_layout Description
-
-\family typewriter
-$this
-\family default
- The this object (You currently can't use the this object implicitly yet..)
-\end_layout
-
-\begin_layout Description
-
-\family typewriter
-parameters
-\family default
- You can simply access method/advice parameters via their name
-\end_layout
-
-\begin_layout Description
-
-\family typewriter
-$result
-\family default
- The return value of a method/advice, available in postconditions
-\end_layout
-
-\begin_layout Description
-
-\family typewriter
-$old(expr)
-\family default
- The old function evaluates an expression before the method/advice is executed,
- stores the result, such that it is available in postconditions.
- This is useful if, for example, you want to compare the old value of a
- field with the new value.
-\end_layout
-
-\begin_layout Description
-
-\family typewriter
-$proc
-\family default
- Depending on whether this keyword is used in the pre-or postconditions
- of an around advice, 
-\family typewriter
-$proc
-\family default
- usually refers to the pre-or postconditions of the method being advised.
- In general, 
-\family typewriter
-$proc
-\family default
- refers to the pre-or postconditions of the body that you *know* will be
- executed next when making a proceed call.
- The emphasis on *know* indicates that you should only be aware of any advice
- that have been mentioned explicitly in an 
-\family typewriter
-@advisedBy
-\family default
- annotation of the advised method.
-\end_layout
-
-\begin_layout Standard
-With contract enforcement enabled, contracts are checked at runtime, as
- well as whether methods/advice are adhering to the Liskov/advice substitution
- principle.
- (For more information on Liskov substitution, just have a look at 
-\begin_inset CommandInset href
-LatexCommand href
-name "Wikipedia"
-target "http://en.wikipedia.org/wiki/Liskov_substitution_principle"
-
-\end_inset
-
-.
- For more information on advice substitution, which is essentially Liskov
- substitution for aspects, have a look at section 3 in the paper 
-\begin_inset CommandInset href
-LatexCommand href
-name "\"Design by Contract for Aspects, by Aspects\""
-target "http://dl.acm.org/citation.cfm?id=2162015"
-
-\end_inset
-
-.) Whenever a contract is broken, a 
-\family typewriter
-ContractEnforcementException
-\family default
- is thrown, indicating which part of the contract was broken, and who is
- to blame.
-\end_layout
-
 \begin_layout Section*
 Configuration
 \end_layout
@@ -539,6 +562,12 @@ AdbcConfig
 \end_layout
 
 \begin_layout Section*
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Troubleshooting"
+
+\end_inset
+
 Troubleshooting
 \end_layout
 
@@ -586,11 +615,33 @@ Caveats
 
 \begin_layout Itemize
 Keep in mind that adbc is currently still a proof of concept.
- This means some basic features are still missing: attaching invariants
- directly to fields, or inheriting contracts from the super class.
- The performance of adbc could also be improved with some caching.
+ This means some basic features are still missing: 
 \end_layout
 
+\begin_deeper
+\begin_layout Itemize
+Invariants can only be attached to a class or aspect, not directly to a
+ field.
+\end_layout
+
+\begin_layout Itemize
+There is no construct yet to easily inherit contracts from a super class
+ when writing the contracts of an overriding method.
+\end_layout
+
+\begin_layout Itemize
+The performance of adbc could be improved with some caching.
+\end_layout
+
+\begin_layout Itemize
+There is no syntactic sugar to make 
+\family typewriter
+$this
+\family default
+ implicit in method calls; it should always be mentioned explicitly.
+\end_layout
+
+\end_deeper
 \begin_layout Itemize
 The advice substitution principle cannot be enforced yet on higher-order
  advice (advice that advises advice..), unless this advice accesses the non-static
