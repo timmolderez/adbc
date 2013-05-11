@@ -71,33 +71,33 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * This advice enforces contracts of constructors
 	 * If a contract is broken, a ContractEnforcementException is thrown.
 	 */
-	Object around(Object dyn): execution(*.new(..)) && excludeContractEnforcers() && this(dyn) {
-		// Skip enforcement if this is the internal constructor of an aspect..
-		if(constructorCheck(thisJoinPoint)) {
-			return proceed(dyn);
-		} 
-		
-		// Temporarily disable substitution checking, as it does not apply to constructors..
-		boolean subst = AdbcConfig.checkSubstitutionPrinciple;
-		AdbcConfig.checkSubstitutionPrinciple = false;
-		try {
-			/* In constructors, there's no notion of static and dynamic type,
-			 * so we can just use thisJoinPoint to retrieve the static contracts.. */
-			callJp=thisJoinPoint;
-			
-			preCheck(null);
-			Object result = proceed(dyn);
-			if (AdbcConfig.checkPostconditions) {
-				postCheck(dyn, null);
-			}
-			AdbcConfig.checkSubstitutionPrinciple=subst;
-			return result;
-		} catch (ScriptException e) {
-			AdbcConfig.checkSubstitutionPrinciple=subst;
-			System.err.println(e.getMessage());
-			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
-		}
-	}
+//	Object around(Object dyn): execution(*.new(..)) && excludeContractEnforcers() && this(dyn) {
+//		// Skip enforcement if this is the internal constructor of an aspect..
+//		if(constructorCheck(thisJoinPoint)) {
+//			return proceed(dyn);
+//		}
+//		
+//		// Temporarily disable substitution checking, as it does not apply to constructors..
+//		boolean subst = AdbcConfig.checkSubstitutionPrinciple;
+//		AdbcConfig.checkSubstitutionPrinciple = false;
+//		try {
+//			/* In constructors, there's no notion of static and dynamic type,
+//			 * so we can just use thisJoinPoint to retrieve the static contracts.. */
+//			callJp=thisJoinPoint;
+//			
+//			preCheck(null);
+//			Object result = proceed(dyn);
+//			if (AdbcConfig.checkPostconditions) {
+//				postCheck(dyn, null);
+//			}
+//			AdbcConfig.checkSubstitutionPrinciple=subst;
+//			return result;
+//		} catch (ScriptException e) {
+//			AdbcConfig.checkSubstitutionPrinciple=subst;
+//			System.err.println(e.getMessage());
+//			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
+//		}
+//	}
 	
 	/*
 	 * Check contracts before method execution (preconditions, invariants, substitution principle)
@@ -109,6 +109,8 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		
 		// Get the contracts of the method call's static type
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
+		
+		System.out.println("HEY" + sig + "---" + dyn);
 
 		AccessibleObject body = null;
 		if(sig instanceof MethodSignature) {
@@ -152,7 +154,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test preconditions
 		String brokenContract = ceval.evalContract(pre);
 		if(brokenContract!=null) {
-			throw new PreConditionException(brokenContract, Thread.currentThread().getStackTrace()[6].toString());
+			throw new PreConditionException(brokenContract, sig.toShortString(), Thread.currentThread().getStackTrace()[6].toString());
 		}
 		
 		// Test invariants
@@ -179,6 +181,8 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Retrieve the method signature of the join point we matched on
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
 		
+		System.out.println(sig + "---" + dyn);
+		
 		// In case of constructors, now fetch the invariants and bind this.. 
 		if (sig instanceof ConstructorSignature) {
 			if (dyn.getClass().isAnnotationPresent(invariant.class)) {
@@ -188,9 +192,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 
 		// Test postconditions
+		System.out.println("fdlfs;" + post[0]);
 		String brokenContract = ceval.evalContract(post);
 		if(brokenContract!=null) {
-			throw new PostConditionException(brokenContract, dyn.getClass().toString());
+			throw new PostConditionException(brokenContract, dyn.toString());
 		}
 		
 		// Test invariants

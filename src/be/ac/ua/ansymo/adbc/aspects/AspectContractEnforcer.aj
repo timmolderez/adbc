@@ -204,14 +204,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
 			if (stPreFailed != null) {
-				throw new PreConditionException(stPreFailed, getCaller());
+				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature());
 			}
 		}
 		
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, getCaller(), "precondition");
+			throw new InvariantException(invFailed, getCallerSignature(), "precondition");
 		}
 
 		// Test advice substitution (if applicable)
@@ -241,8 +241,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!advKind.equals("before")) {
 			String stPostFailed = ceval.evalContract(post);
 			if (stPostFailed != null) {
-				throw new PostConditionException(stPostFailed, dyn.getClass()
-						.toString());
+				throw new PostConditionException(stPostFailed, dyn.getClass().toString());
 			}
 		}
 
@@ -370,7 +369,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	/*
 	 * Retrieve the caller of the user-advice
 	 */
-	private String getCaller() {
+	private String getCallerSignature() {
 		/* Runtime stack at this point:
 		 * 0: getStackTrace()
 		 * 1: getCaller()
@@ -382,6 +381,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		 * 7: caller <== This is what we're interested in..	*/
 		StackTraceElement elem = Thread.currentThread().getStackTrace()[7];
 		return elem.toString();
+	}
+	
+	private String getCalleeSignature(JoinPoint jp) {
+		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
+		Method aBody = aSig.getAdvice();
+		String advName = "anonymous";
+		if (aBody.isAnnotationPresent(AdviceName.class)) {
+			advName = aBody.getAnnotation(AdviceName.class).value();
+		}
+		
+		StackTraceElement elem = Thread.currentThread().getStackTrace()[6];
+		return elem.toString() + "(Advice name: " + advName + ")";
 	}
 	
 	// Container for return value of getAdvBySuffixContracts

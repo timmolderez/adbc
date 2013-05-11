@@ -38,7 +38,7 @@ public aspect Security {
 	}
 	
 	@requires("$proc")
-	@ensures({"from.getOwner().isLoggedIn()?$proc:false"})
+	@ensures({"from.getOwner().isLoggedIn()?$proc:true"})
 	@AdviceName("authenticate")
 	void around(Account from, double amount, Account to): call(void Account.transfer(double, Account)) 
 	&& args(amount, to) && target(from) {
@@ -51,8 +51,8 @@ public aspect Security {
 	}
 	
 	
-	@requires("from.getOwner().isLoggedIn() && $proc")
-	@ensures({"from.getOwner().isAuthorized()?$proc:false"})
+	@requires("$proc")
+	@ensures({"from.getOwner().isAuthorized()?$proc:true"})
 	@AdviceName("authorize")
 	void around(Account from): call(void Account.transfer(double, Account)) && target(from) {
 		if (from.getOwner().isLoggedIn()) {

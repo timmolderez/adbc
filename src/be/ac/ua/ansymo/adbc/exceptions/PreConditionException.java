@@ -15,9 +15,16 @@ package be.ac.ua.ansymo.adbc.exceptions;
  */
 public class PreConditionException extends ContractEnforcementException {
 
-	public PreConditionException(String precondition, String blame) {
+	/**
+	 * Constructor
+	 * @param precondition	which precondition is broken (if a contract consists of multiple parts; only pass the part that has been broken)
+	 * @param where			which body does the contract belong to?
+	 * @param blame			who is to blame for breaking the contract?
+	 */
+	public PreConditionException(String precondition, String where, String blame) {
 		super("\n\tPrecondition broken!" +
 				"\n\tContract:	" + precondition +
+				"\n\tWhere:		" + where +
 				"\n\tBlame:		" + blame +
 				"\n");
 	}
