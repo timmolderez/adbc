@@ -36,8 +36,6 @@ import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
  * @author Tim Molderez
  */
 public aspect ClassContractEnforcer extends AbstractContractEnforcer {
-	private JoinPoint callJp;				// The call join point corresponding to the execution join point captured by the contract enforcement advice
-	private Vector<String[]> postContracts;	// Postconditions of ancestors, with their $old() calls processed
 	
 	/**
 	 * This advice enforces contracts of regular method calls
@@ -50,19 +48,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		 * or you'll trigger infinite pointcut matching! */
 		
 		try {
-			/* Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
-			 * We need this call join point because it knows the static type of the method call; the execution join point only knows the dynamic type.
-			 * Note that we can safely pop this entry from CallStack, as no other contract enforcement advice will need it. */
-			callJp = CallStack.pop();
-			
-			preCheck(dyn);
+			PostData pD = preCheck(dyn);
 			Object result = proceed(dyn);
 			if (AdbcConfig.checkPostconditions) {
-				postCheck(dyn, result);
+				postCheck(pD, dyn, result);
 			}
 			return result;
 		} catch (ScriptException e) {
-			System.err.println(e.getMessage());
 			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
 		}
 	}
@@ -103,14 +95,17 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * Check contracts before method execution (preconditions, invariants, substitution principle)
 	 * @param dyn	the this object
 	 */
-	private void preCheck(Object dyn) throws ScriptException {
+	private PostData preCheck(Object dyn) throws ScriptException {
+		/* Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
+		 * We need this call join point because it knows the static type of the method call; the execution join point only knows the dynamic type.
+		 * Note that we can safely pop this entry from CallStack, as no other contract enforcement advice will need it. */
+		JoinPoint callJp = CallStack.pop();
+		
 		// Reset bindings
-		ceval = new ContractInterpreter();
+		ContractInterpreter ceval = new ContractInterpreter();
 		
 		// Get the contracts of the method call's static type
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
-		
-		System.out.println("HEY" + sig + "---" + dyn);
 
 		AccessibleObject body = null;
 		if(sig instanceof MethodSignature) {
@@ -119,9 +114,9 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			body = ((ConstructorSignature)sig).getConstructor();
 		}
 		
-		pre = new String[]{"true"};
-		post = new String[]{"true"};
-		inv = new String[]{"true"};
+		String[] pre = new String[]{"true"};
+		String[] post = new String[]{"true"};
+		String[] inv = new String[]{"true"};
 		
 		if (body.isAnnotationPresent(requires.class)) {
 			pre = body.getAnnotation(requires.class).value();
@@ -134,7 +129,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 		
 		// Reset postconditions
-		postContracts = new Vector<String[]>();
+		Vector<String[]> postContracts = new Vector<String[]>();
 		
 		// Bind parameter values
 		ceval.setParameterBindings(sig.getParameterNames(), callJp.getArgs());
@@ -165,8 +160,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		
 		// Test Liskov substitution
 		if (AdbcConfig.checkSubstitutionPrinciple) {
-			liskovPreCheck(dyn.getClass(), sig);
+			liskovPreCheck(ceval, dyn.getClass(), sig, postContracts);
 		}
+		
+		return new PostData(ceval, post, inv, callJp, postContracts);
 	}
 	
 	/*
@@ -174,15 +171,19 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @param dyn		the this object
 	 * @param result	return value of the method call
 	 */
-	private void postCheck(Object dyn, Object result) throws ScriptException {
+	private void postCheck(PostData pD, Object dyn, Object result) throws ScriptException {
+		ContractInterpreter ceval = pD.ceval;
+		JoinPoint callJp = pD.callJp;
+		String[] inv = pD.inv;
+		String[] post = pD.post;
+		Vector<String[]> postContracts = pD.postContracts;
+		
 		// Bind the return value
 		ceval.setReturnValueBinding(result);
 		
 		// Retrieve the method signature of the join point we matched on
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
-		
-		System.out.println(sig + "---" + dyn);
-		
+				
 		// In case of constructors, now fetch the invariants and bind this.. 
 		if (sig instanceof ConstructorSignature) {
 			if (dyn.getClass().isAnnotationPresent(invariant.class)) {
@@ -192,7 +193,6 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 
 		// Test postconditions
-		System.out.println("fdlfs;" + post[0]);
 		String brokenContract = ceval.evalContract(post);
 		if(brokenContract!=null) {
 			throw new PostConditionException(brokenContract, dyn.toString());
@@ -206,7 +206,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		
 		// Test Liskov substitution
 		if (AdbcConfig.checkSubstitutionPrinciple) {
-			liskovPostCheck(true, dyn.getClass(), sig, 0);
+			liskovPostCheck(ceval, true, dyn.getClass(), sig, postContracts, 0);
 		}
 	}
 	
@@ -225,7 +225,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @param sig		signature of the method to be checked
 	 * @return			true if Liskov substitution is respected in this instance
 	 */
-	private boolean liskovPreCheck(Class<?> dynType, CodeSignature sig) throws ScriptException {
+	private boolean liskovPreCheck(ContractInterpreter ceval, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
 		try {
 			boolean res = true;
 			boolean next = true;
@@ -240,7 +240,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (mBody.getDeclaringClass().getSuperclass()!=Object.class) {
-				next = liskovPreCheck(mBody.getDeclaringClass().getSuperclass(), sig);
+				next = liskovPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), sig, postContracts);
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
@@ -276,7 +276,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @param i			index indicating which entry of postContracts to use
 	 * @return			true if Liskov substitution is respected in this instance
 	 */
-	private boolean liskovPostCheck(boolean last, Class<?> dynType, CodeSignature sig, int i) throws ScriptException {
+	private boolean liskovPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
 		boolean res = true;
 		String brokenContract=null;
 		
@@ -296,7 +296,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (!last || res) {
-				return liskovPostCheck(res, dynType.getSuperclass(), sig,i+1);
+				return liskovPostCheck(ceval, res, dynType.getSuperclass(), sig, postContracts, i+1);
 			} else {
 				throw new SubstitutionException(brokenContract, dynType.toString(), "postcondition too weak");
 			}
@@ -307,5 +307,24 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			return true;
 		}
 	}
-
+	
+	/*
+	 * Container for the data to be passed from preCheck() to postCheck()
+	 */
+	private class PostData {
+		public PostData(ContractInterpreter ceval, String[] post, String[] inv, JoinPoint callJp, Vector<String[]> postContracts) {
+			this.ceval = ceval;
+			this.post = post;
+			this.inv = inv;
+			this.callJp = callJp;
+			this.postContracts = postContracts;
+		}
+		
+		public ContractInterpreter ceval;
+		public String[] post;
+		public String[] inv;
+		
+		public JoinPoint callJp;				// The call join point corresponding to the execution join point captured by the contract enforcement advice
+		public Vector<String[]> postContracts;	// Postconditions of ancestors, with their $old() calls processed
+	}
 }

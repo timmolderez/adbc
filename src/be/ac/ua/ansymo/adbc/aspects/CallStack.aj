@@ -26,7 +26,6 @@ public aspect CallStack extends AbstractContractEnforcer {
 	before(): call(* *.*(..)) 
 	&& !call(* java.*.*.*(..)) // Exclude JRE libs; these don't generate corresponding execution join points..
 	&& excludeContractEnforcers() {
-//		thisJoinPoint.getTarget(); 
 		push(thisJoinPoint);
 	}
 	
