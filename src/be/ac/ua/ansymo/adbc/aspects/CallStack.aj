@@ -14,6 +14,7 @@ public aspect CallStack extends AbstractContractEnforcer {
 	 * We're doing this because contract enforcement needs to happen at the very, very last moment.
 	 * That is, contract enforcement has to be the last advice at the execution join point.
 	 * We want to check the contracts of the original piece of code only, nothing more.
+	 * 
 	 * Problem with that is, an execution join point doesn't know the static type of the corresponding call
 	 * join point. We need this static type to be able to check the substitution principle.
 	 * This is why we need this CallStack aspect. It captures the call join point, and makes it available 

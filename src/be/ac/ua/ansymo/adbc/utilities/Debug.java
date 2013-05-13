@@ -5,9 +5,9 @@ package be.ac.ua.ansymo.adbc.utilities;
  * @author Tim Molderez
  */
 public class Debug {
-	static public void print(String[] arr) {
-		for (String string : arr) {
-			System.out.println(string);
+	static public void print(Object[] arr) {
+		for (Object obj : arr) {
+			System.out.println(obj.toString());
 		}
 	}
 }

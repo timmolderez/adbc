@@ -33,7 +33,6 @@ import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
-import be.ac.ua.ansymo.adbc.utilities.Debug;
 
 /**
  * This aspect enforces the contracts of all aspects in the application. 
@@ -75,7 +74,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Retrieve the join point advised by the user-advice
 		JoinPoint tjp = null;
 		try {
-			// Note that we're peeking into CallStack, not popping! Other contract enforcement still need this top entry!
+			// Note that we're peeking into CallStack, not popping! Other contract enforcement advice still need this top entry!
 			tjp = CallStack.peek();
 		} catch (EmptyStackException e) {
 			/* In case the advice we've intercepted advises join points other than calls and executions,
@@ -99,7 +98,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		boolean isAdvisedBy = advBySuffix != null;
 
 		// Get the contracts of the user-advice's advised joinpoint
-		// TODO: This currently does not work yet for higher-order advice..
 		String[] pre = new String[]{"true"};
 		String[] post = new String[]{"true"};
 		String[] inv = new String[]{"true"};
@@ -191,14 +189,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
 			if (stPreFailed != null) {
-				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature());
+				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature(aBody));
 			}
 		}
 		
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, getCallerSignature(), "precondition");
+			throw new InvariantException(invFailed, getCallerSignature(aBody), "precondition");
 		}
 
 		// Test advice substitution (if applicable)
@@ -230,7 +228,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 		// Test postconditions
 		if (!pD.advKind.equals("before")) {
-			Debug.print(pD.post);
 			String stPostFailed = ceval.evalContract(pD.post);
 			if (stPostFailed != null) {
 				throw new PostConditionException(stPostFailed, dyn.getClass().toString());
@@ -358,17 +355,18 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	/*
 	 * Retrieve the caller of the user-advice
 	 */
-	private String getCallerSignature() {
+	private String getCallerSignature(Method currentBody) {
 		/* Runtime stack at this point:
 		 * 0: getStackTrace()
-		 * 1: getCaller()
-		 * 2: preCheck()
-		 * 3: preCheck()
-		 * 4: around (contract enforcer)
-		 * 5: user-advice
-		 * 6: tjp
-		 * 7: caller <== This is what we're interested in..	*/
-		StackTraceElement elem = Thread.currentThread().getStackTrace()[7];
+		 * 1: getCallerSignature_aroundBody()
+		 * 2: getCallerSignature()
+		 * 3: preCheck_aroundBody()
+		 * 4: preCheck()
+		 * 5: inlineAccessMethod
+		 * 6: contract advice
+		 * 7: user advice
+		 * 8: caller <== This is what we're interested in..	*/
+		StackTraceElement elem = Thread.currentThread().getStackTrace()[8];
 		return elem.toString();
 	}
 	
@@ -380,7 +378,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advName = aBody.getAnnotation(AdviceName.class).value();
 		}
 		
-		StackTraceElement elem = Thread.currentThread().getStackTrace()[6];
+		StackTraceElement elem = Thread.currentThread().getStackTrace()[7];
 		return elem.toString() + "(Advice name: " + advName + ")";
 	}
 	
@@ -408,7 +406,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		}
 		
 		public ContractInterpreter ceval;
-		
 		
 		public String[] post;
 		public String[] inv;

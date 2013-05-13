@@ -11,6 +11,7 @@ package be.ac.ua.ansymo.adbc.aspects;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
+import java.util.EmptyStackException;
 import java.util.Vector;
 
 import javax.script.ScriptException;
@@ -48,7 +49,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		 * or you'll trigger infinite pointcut matching! */
 		
 		try {
-			PostData pD = preCheck(dyn);
+			PostData pD = preCheck(thisJoinPoint, dyn);
 			Object result = proceed(dyn);
 			if (AdbcConfig.checkPostconditions) {
 				postCheck(pD, dyn, result);
@@ -63,43 +64,47 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * This advice enforces contracts of constructors
 	 * If a contract is broken, a ContractEnforcementException is thrown.
 	 */
-//	Object around(Object dyn): execution(*.new(..)) && excludeContractEnforcers() && this(dyn) {
-//		// Skip enforcement if this is the internal constructor of an aspect..
-//		if(constructorCheck(thisJoinPoint)) {
-//			return proceed(dyn);
-//		}
-//		
-//		// Temporarily disable substitution checking, as it does not apply to constructors..
-//		boolean subst = AdbcConfig.checkSubstitutionPrinciple;
-//		AdbcConfig.checkSubstitutionPrinciple = false;
-//		try {
-//			/* In constructors, there's no notion of static and dynamic type,
-//			 * so we can just use thisJoinPoint to retrieve the static contracts.. */
-//			callJp=thisJoinPoint;
-//			
-//			preCheck(null);
-//			Object result = proceed(dyn);
-//			if (AdbcConfig.checkPostconditions) {
-//				postCheck(dyn, null);
-//			}
-//			AdbcConfig.checkSubstitutionPrinciple=subst;
-//			return result;
-//		} catch (ScriptException e) {
-//			AdbcConfig.checkSubstitutionPrinciple=subst;
-//			System.err.println(e.getMessage());
-//			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
-//		}
-//	}
+	Object around(Object dyn): execution(*.new(..)) && excludeContractEnforcers() && this(dyn) {
+		// Skip enforcement if this is the internal constructor of an aspect..
+		if(constructorCheck(thisJoinPoint)) {
+			return proceed(dyn);
+		}
+		
+		// Temporarily disable substitution checking, as it does not apply to constructors..
+		boolean subst = AdbcConfig.checkSubstitutionPrinciple;
+		AdbcConfig.checkSubstitutionPrinciple = false;
+		try {
+			PostData pD = preCheck(thisJoinPoint, null);
+			Object result = proceed(dyn);
+			if (AdbcConfig.checkPostconditions) {
+				postCheck(pD, dyn, null);
+			}
+			AdbcConfig.checkSubstitutionPrinciple=subst;
+			return result;
+		} catch (ScriptException e) {
+			AdbcConfig.checkSubstitutionPrinciple=subst;
+			System.err.println(e.getMessage());
+			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
+		}
+	}
 	
 	/*
 	 * Check contracts before method execution (preconditions, invariants, substitution principle)
+	 * @param jp	thisJoinPoint
 	 * @param dyn	the this object
 	 */
-	private PostData preCheck(Object dyn) throws ScriptException {
-		/* Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
-		 * We need this call join point because it knows the static type of the method call; the execution join point only knows the dynamic type.
-		 * Note that we can safely pop this entry from CallStack, as no other contract enforcement advice will need it. */
-		JoinPoint callJp = CallStack.pop();
+	private PostData preCheck(JoinPoint jp, Object dyn) throws ScriptException {
+		/* ****************************************************************
+		 * Fetching the necessary info...
+		 **************************************************************** */
+		
+		// Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
+		JoinPoint callJp = null;
+		try {
+			callJp = CallStack.pop();
+		} catch (EmptyStackException e) {
+			callJp = jp;
+		}
 		
 		// Reset bindings
 		ContractInterpreter ceval = new ContractInterpreter();
@@ -131,6 +136,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Reset postconditions
 		Vector<String[]> postContracts = new Vector<String[]>();
 		
+		/* ****************************************************************
+		 * Binding contract variables
+		 **************************************************************** */
+		
 		// Bind parameter values
 		ceval.setParameterBindings(sig.getParameterNames(), callJp.getArgs());
 		
@@ -145,6 +154,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		} catch (ScriptException e) {
 			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
+		
+		/* ****************************************************************
+		 * Actual contract enforcement
+		 **************************************************************** */
 		
 		// Test preconditions
 		String brokenContract = ceval.evalContract(pre);
