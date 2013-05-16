@@ -14,10 +14,13 @@ package be.ac.ua.ansymo.adbc.exceptions;
  * @author Tim Molderez
  */
 public class SubstitutionException extends ContractEnforcementException {
-	public SubstitutionException(String contract, String blame, String reason) {
-		super("\n\tSubstitution principle broken! (" + reason + ")" +
-				"\n\tContract:	" + contract +
-				"\n\tBlame:		" + blame +
-				"\n");
+	
+	/**
+	 * Constructor
+	 * @param postcondition	which postcondition is broken (if a contract consists of multiple parts; only pass the part that has been broken)
+	 * @param blame			who is to blame for breaking the contract?
+	 */
+	public SubstitutionException(String contract, String where, String blame, String reason) {
+		super("Substitution principle broken! (" + reason + ")", contract, where, blame);
 	}
 }

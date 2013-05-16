@@ -22,10 +22,6 @@ public class PreConditionException extends ContractEnforcementException {
 	 * @param blame			who is to blame for breaking the contract?
 	 */
 	public PreConditionException(String precondition, String where, String blame) {
-		super("\n\tPrecondition broken!" +
-				"\n\tContract:	" + precondition +
-				"\n\tWhere:		" + where +
-				"\n\tBlame:		" + blame +
-				"\n");
+		super("Precondition broken!", precondition, where, blame);
 	}
 }

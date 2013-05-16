@@ -92,6 +92,9 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Retrieve the user-advice
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
+		
+//		System.out.println(getCalleeSignature(jp));
+//		System.out.println("Caller:" + getCallerSignature(jp));
 
 		// Determine whether this advice is mentioned in an @advisedBy clause. And if so, which advice follow in that clause?
 		String[] advBySuffix = isAdvisedBy(mBody, aBody, tjp.getKind());
@@ -189,14 +192,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
 			if (stPreFailed != null) {
-				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature(aBody));
+				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature(jp));
 			}
 		}
 		
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, getCallerSignature(aBody), "precondition");
+			throw new InvariantException(invFailed, getCalleeSignature(jp), getCallerSignature(jp), "precondition");
 		}
 
 		// Test advice substitution (if applicable)
@@ -205,12 +208,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 			String jpPreFailed = ceval.evalContract(advPre);
 			if (jpPreFailed != null) {
-				throw new SubstitutionException(jpPreFailed, jp.getSignature().toString(), "precondition too strong");
+				throw new SubstitutionException(jpPreFailed, getCalleeSignature(jp), getCalleeSignature(jp), "precondition too strong");
 			}
 
 			invFailed = ceval.evalContract(advInv);
 			if (invFailed != null) {
-				throw new InvariantException(invFailed, jp.getSignature().toString(), "invariant not preserved");
+				throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "invariant not preserved");
 			}
 		}
 		
@@ -237,7 +240,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Test invariants
 		String invFailed = ceval.evalContract(pD.inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, dyn.getClass().toString(), "postcondition");
+			throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition");
 		}
 
 		// Test advice substitution
@@ -245,13 +248,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			String jpPostFailed = ceval.evalContract(pD.advPost);
 			
 			if (jpPostFailed != null) {
-				throw new SubstitutionException(jpPostFailed, jp.getSignature()
-						.toString(), "postcondition too weak");
+				throw new SubstitutionException(jpPostFailed, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition too weak");
 			}
 
 			invFailed = ceval.evalContract(pD.advInv);
 			if (invFailed != null) {
-				throw new InvariantException(invFailed, pD.tjp.getTarget().toString(), "invariant not preserved");
+				throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "invariant not preserved");
 			}
 		}
 	}
@@ -355,7 +357,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	/*
 	 * Retrieve the caller of the user-advice
 	 */
-	private String getCallerSignature(Method currentBody) {
+	private String getCallerSignature(JoinPoint jp) {
 		/* Runtime stack at this point:
 		 * 0: getStackTrace()
 		 * 1: getCallerSignature_aroundBody()
@@ -365,9 +367,21 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		 * 5: inlineAccessMethod
 		 * 6: contract advice
 		 * 7: user advice
-		 * 8: caller <== This is what we're interested in..	*/
-		StackTraceElement elem = Thread.currentThread().getStackTrace()[8];
-		return elem.toString();
+		 * 8+ The actual caller should be around here, after skipping all the internal stuff AspectJ creates.. */
+		
+		int i=8;
+		StackTraceElement[] elems = Thread.currentThread().getStackTrace();
+		while (i<elems.length) {
+			String m = elems[i].getMethodName();
+
+			// Anything ending in proceed or run or aroundBody should be internal AspectJ stuff..
+			if(m.matches(".*proceed\\d*") || m.endsWith("run") || m.matches(".*aroundBody\\d*(\\$advice)?")) {
+				i++;
+			} else {
+				return elems[i].getClassName() + "." + elems[i].getMethodName();
+			}
+		}
+		return "(caller not found)";
 	}
 	
 	private String getCalleeSignature(JoinPoint jp) {
@@ -378,8 +392,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advName = aBody.getAnnotation(AdviceName.class).value();
 		}
 		
-		StackTraceElement elem = Thread.currentThread().getStackTrace()[7];
-		return elem.toString() + "(Advice name: " + advName + ")";
+		return aSig + "(Advice name: " + advName + ")";
 	}
 	
 	// Container for return value of getAdvBySuffixContracts

@@ -15,10 +15,12 @@ package be.ac.ua.ansymo.adbc.exceptions;
  */
 public class InvariantException extends ContractEnforcementException {
 
-	public InvariantException(String invariant, String blame, String message) {
-		super("\n\tInvariant broken! (" + message + ")"+
-				"\n\tContract:	" + invariant +
-				"\n\tBlame:		" + blame +
-				"\n");
+	/**
+	 * Constructor
+	 * @param invariant		which postcondition is broken (if a contract consists of multiple parts; only pass the part that has been broken)
+	 * @param blame			who is to blame for breaking the contract?
+	 */
+	public InvariantException(String invariant, String where, String blame, String message) {
+		super("Invariant broken! (" + message + ")", invariant, where, blame);
 	}
 }

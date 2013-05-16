@@ -18,15 +18,10 @@ public class PostConditionException extends ContractEnforcementException {
 	/**
 	 * Constructor
 	 * @param postcondition	which postcondition is broken (if a contract consists of multiple parts; only pass the part that has been broken)
-	 * @param where			which body does the contract belong to?
 	 * @param blame			who is to blame for breaking the contract?
 	 */
 	public PostConditionException(String postcondition, String blame) {
-		super("\n\tPostcondition broken!" +
-				"\n\tContract:	" + postcondition +
-				"\n\tWhere:		" + blame +
-				"\n\tBlame:		" + blame +
-				"\n");
+		super("Postcondition broken!", postcondition, blame, blame);
 	}
 
 }

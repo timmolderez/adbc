@@ -13,8 +13,8 @@ import be.ac.ua.ansymo.example_bank.Account;
 public aspect TransactionLogger {
 	@requires("true")
 	@ensures("true")
-	before(double amount, Account to, Account from): execution(void Account.transfer(double, Account)) 
-	&& args(amount, to) && this(from) {
+	after(double amount, Account to, Account from): call(void Account.transfer(double, Account)) 
+	&& args(amount, to) && target(from) {
 		System.out.println("TransactionLogger: Starting transfer of " + amount + " bucks " +
 				"from " + from.getOwner().getName()	+ " to " + to.getOwner().getName());
 	}

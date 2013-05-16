@@ -17,6 +17,8 @@ import java.util.Vector;
 import javax.script.ScriptException;
 
 import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.AdviceName;
+import org.aspectj.lang.reflect.AdviceSignature;
 import org.aspectj.lang.reflect.CodeSignature;
 import org.aspectj.lang.reflect.ConstructorSignature;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -30,6 +32,7 @@ import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
+import be.ac.ua.ansymo.adbc.utilities.Debug;
 
 /**
  * This aspects enforces the contracts of all your classes.
@@ -52,7 +55,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			PostData pD = preCheck(thisJoinPoint, dyn);
 			Object result = proceed(dyn);
 			if (AdbcConfig.checkPostconditions) {
-				postCheck(pD, dyn, result);
+				postCheck(pD, thisJoinPoint, dyn, result);
 			}
 			return result;
 		} catch (ScriptException e) {
@@ -77,7 +80,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			PostData pD = preCheck(thisJoinPoint, null);
 			Object result = proceed(dyn);
 			if (AdbcConfig.checkPostconditions) {
-				postCheck(pD, dyn, null);
+				postCheck(pD, thisJoinPoint, dyn, null);
 			}
 			AdbcConfig.checkSubstitutionPrinciple=subst;
 			return result;
@@ -162,13 +165,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test preconditions
 		String brokenContract = ceval.evalContract(pre);
 		if(brokenContract!=null) {
-			throw new PreConditionException(brokenContract, sig.toShortString(), Thread.currentThread().getStackTrace()[6].toString());
+			throw new PreConditionException(brokenContract, getCalleeSignature(jp), getCallerSignature(jp));
 		}
 		
 		// Test invariants
 		brokenContract = ceval.evalContract(inv);
 		if(brokenContract!=null) {
-			throw new InvariantException(brokenContract, Thread.currentThread().getStackTrace()[2].toString(), "precondition");
+			throw new InvariantException(brokenContract, getCalleeSignature(jp), getCallerSignature(jp), "precondition");
 		}
 		
 		// Test Liskov substitution
@@ -184,7 +187,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @param dyn		the this object
 	 * @param result	return value of the method call
 	 */
-	private void postCheck(PostData pD, Object dyn, Object result) throws ScriptException {
+	private void postCheck(PostData pD, JoinPoint jp, Object dyn, Object result) throws ScriptException {
 		ContractInterpreter ceval = pD.ceval;
 		JoinPoint callJp = pD.callJp;
 		String[] inv = pD.inv;
@@ -208,13 +211,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test postconditions
 		String brokenContract = ceval.evalContract(post);
 		if(brokenContract!=null) {
-			throw new PostConditionException(brokenContract, dyn.toString());
+			throw new PostConditionException(brokenContract, getCalleeSignature(jp));
 		}
 		
 		// Test invariants
 		brokenContract = ceval.evalContract(inv);
 		if(brokenContract!=null) {
-			throw new InvariantException(brokenContract, dyn.getClass().toString(), "postcondition");
+			throw new InvariantException(brokenContract, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition");
 		}
 		
 		// Test Liskov substitution
@@ -259,7 +262,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			if (dynType.isAnnotationPresent(invariant.class)) {
 				String brokenInv = ceval.evalContract(dynType.getAnnotation(invariant.class).value());
 				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,dynType.toString(), "invariant not preserved");
+					throw new SubstitutionException(brokenInv,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "invariant not preserved");
 				}
 			}
 			
@@ -270,7 +273,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			if (!next || res) {
 				return res;
 			} else {
-				throw new SubstitutionException(brokenContract,dynType.toString(), "precondition too strong");
+				throw new SubstitutionException(brokenContract,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "precondition too strong");
 			}
 		} catch (SecurityException e) {
 			e.printStackTrace();
@@ -304,14 +307,14 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			if (dynType.isAnnotationPresent(invariant.class)) {
 				String brokenInv = ceval.evalContract(dynType.getAnnotation(invariant.class).value());
 				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,dynType.toString(), "invariant not preserved");
+					throw new SubstitutionException(brokenInv,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "invariant not preserved");
 				}
 			}
 			
 			if (!last || res) {
 				return liskovPostCheck(ceval, res, dynType.getSuperclass(), sig, postContracts, i+1);
 			} else {
-				throw new SubstitutionException(brokenContract, dynType.toString(), "postcondition too weak");
+				throw new SubstitutionException(brokenContract, sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "postcondition too weak");
 			}
 		} catch (SecurityException e) {
 			e.printStackTrace();
@@ -319,6 +322,40 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		} catch (NoSuchMethodException e) {
 			return true;
 		}
+	}
+	
+	/*
+	 * Retrieve the caller of the method
+	 */
+	private String getCallerSignature(JoinPoint jp) {
+		/* Runtime stack at this point:
+		 * 0: getStackTrace()
+		 * 1: getCallerSignature_aroundBody()
+		 * 2: getCallerSignature()
+		 * 3: preCheck_aroundBody()
+		 * 4: preCheck()
+		 * 5: inlineAccessMethod
+		 * 6: contract advice
+		 * 7: user advice
+		 * 8+ The actual caller should be around here, after skipping all the internal stuff AspectJ creates.. */
+		
+		int i=8;
+		StackTraceElement[] elems = Thread.currentThread().getStackTrace();
+		while (i<elems.length) {
+			String m = elems[i].getMethodName();
+
+			// Anything ending in proceed or run or aroundBody should be internal AspectJ stuff..
+			if(m.matches(".*proceed\\d*") || m.endsWith("run") || m.matches(".*aroundBody\\d*(\\$advice)?")) {
+				i++;
+			} else {
+				return elems[i].getClassName() + "." + elems[i].getMethodName();
+			}
+		}
+		return "(caller not found)";
+	}
+	
+	private String getCalleeSignature(JoinPoint jp) {
+		return jp.getSignature().toString();
 	}
 	
 	/*
