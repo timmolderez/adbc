@@ -1,11 +1,11 @@
-/**
- * Copyright (c) 2012 Tim Molderez.
+/*******************************************************************************
+ * Copyright (c) 2012-2013 Tim Molderez.
  * 
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the 3-Clause BSD License
  * which accompanies this distribution, and is available at
  * http://www.opensource.org/licenses/BSD-3-Clause
- */
+ ******************************************************************************/
 
 package be.ac.ua.ansymo.adbc.aspects;
 
@@ -92,9 +92,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Retrieve the user-advice
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
-		
-//		System.out.println(getCalleeSignature(jp));
-//		System.out.println("Caller:" + getCallerSignature(jp));
 
 		// Determine whether this advice is mentioned in an @advisedBy clause. And if so, which advice follow in that clause?
 		String[] advBySuffix = isAdvisedBy(mBody, aBody, tjp.getKind());
@@ -233,7 +230,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!pD.advKind.equals("before")) {
 			String stPostFailed = ceval.evalContract(pD.post);
 			if (stPostFailed != null) {
-				throw new PostConditionException(stPostFailed, dyn.getClass().toString());
+				throw new PostConditionException(stPostFailed, pD.tjp.getSignature().toLongString(), dyn.getClass().toString());
 			}
 		}
 

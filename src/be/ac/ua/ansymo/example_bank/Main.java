@@ -1,6 +1,16 @@
+/*******************************************************************************
+ * Copyright (c) 2012-2013 Tim Molderez.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the 3-Clause BSD License
+ * which accompanies this distribution, and is available at
+ * http://www.opensource.org/licenses/BSD-3-Clause
+ ******************************************************************************/
+
 package be.ac.ua.ansymo.example_bank;
 
-import be.ac.ua.ansymo.example_bank.aspects.Security;
+import be.ac.ua.ansymo.example_bank.aspects.Authentication;
+import be.ac.ua.ansymo.example_bank.aspects.Authorization;
 
 /**
  * A simple demo application to demonstrate the use of the contract enforcer
@@ -20,6 +30,7 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		try {
+			// Uncomment to alter adbc's settings
 //			AdbcConfig.enforceContracts = false;
 //			AdbcConfig.engine = "JavaScript";
 //			AdbcConfig.keywordPrefix = "$";
@@ -38,10 +49,19 @@ public class Main {
 		User u2 = new User("Jake");
 		Account u2acc1 = new Account(30.0, u2);
 		
-		Security.login(u1, "Peebles");
+		/* Remove these two lines and contracts will still be satisfied when calling transfer() later on,
+		 * even though the transfer is actually blocked by the authentication/authorization advice in Security.
+		 * This is because, when looking at transfer(), there is an @advisedBy annotation there, which tells
+		 * us that we should be aware of the authentication/authorization advice in Security.
+		 * That is, if we don't log in, we shouldn't be surprised that the transfer is blocked,
+		 * as this is specified by the contracts of the Security advice.
+		 * However, try to see what happens if you remove these two lines and the @advisedBy clause. */
+//		Authentication.login(u1, "Peebles");
+//		Authorization.addRights(u1, "transfer");
+		
 		u1acc1.transfer(5.0, u2acc1);
 		
-//		u1acc2.transfer(5.0, u2acc1); // Uncomment this line to trigger a Liskov substitution error; precondition of SavingsAccount.transfer is stronger than that of Account
+//		u1acc2.transfer(5.0, u2acc1); // Uncomment this line to substitution error; precondition of SavingsAccount.transfer is stronger than that of Account
 		u1acc2.transfer(10.0, u1acc1);
 	}
 }

@@ -1,11 +1,11 @@
-/**
- * Copyright (c) 2012 Tim Molderez.
+/*******************************************************************************
+ * Copyright (c) 2012-2013 Tim Molderez.
  * 
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the 3-Clause BSD License
  * which accompanies this distribution, and is available at
  * http://www.opensource.org/licenses/BSD-3-Clause
- */
+ ******************************************************************************/
 
 package be.ac.ua.ansymo.adbc.aspects;
 
@@ -211,7 +211,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test postconditions
 		String brokenContract = ceval.evalContract(post);
 		if(brokenContract!=null) {
-			throw new PostConditionException(brokenContract, getCalleeSignature(jp));
+			throw new PostConditionException(brokenContract, callJp.getSignature().toLongString(), getCalleeSignature(jp));
 		}
 		
 		// Test invariants

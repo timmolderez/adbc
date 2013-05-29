@@ -1,3 +1,12 @@
+/*******************************************************************************
+ * Copyright (c) 2012-2013 Tim Molderez.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the 3-Clause BSD License
+ * which accompanies this distribution, and is available at
+ * http://www.opensource.org/licenses/BSD-3-Clause
+ ******************************************************************************/
+
 package be.ac.ua.ansymo.example_bank;
 
 import be.ac.ua.ansymo.adbc.annotations.advisedBy;
@@ -40,8 +49,8 @@ public class Account {
 		"$this.getAmount()==$old($this.getAmount())-amount",
 		"to.getAmount()==$old(to.getAmount())+amount"
 		})
-//	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Security.authenticate",
-//		"be.ac.ua.ansymo.example_bank.aspects.Security.authorize"})
+//	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate",
+//		"be.ac.ua.ansymo.example_bank.aspects.Authorization.authorize"})
 	public void transfer(double amount, Account to) {
 		withdraw(amount);
 		to.deposit(amount);

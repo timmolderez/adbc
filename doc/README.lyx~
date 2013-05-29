@@ -3,9 +3,6 @@
 \begin_document
 \begin_header
 \textclass article
-\begin_preamble
-\input{listings}
-\end_preamble
 \use_default_options true
 \maintain_unincluded_children false
 \language english
@@ -452,12 +449,12 @@ The following example of a simple
 \family typewriter
 Square
 \family default
- class demonstrates the basic syntax of contracts:
+ class demonstrates the syntax of contracts:
 \end_layout
 
 \begin_layout Standard
 \begin_inset listings
-lstparams "basicstyle={\small\ttfamily},language=AspectJ,showstringspaces=false,tabsize=2"
+lstparams "basicstyle={\small\ttfamily},language:AspectJ,tabsize=2"
 inline false
 status open
 
@@ -501,7 +498,7 @@ class Square {
 
 \begin_layout Plain Layout
 
-		@ensures("$result==$this.getWidth()*$this.getWidth()")
+		@ensures("$result=="$this.getWidth()*$this.getWidth()")
 \end_layout
 
 \begin_layout Plain Layout

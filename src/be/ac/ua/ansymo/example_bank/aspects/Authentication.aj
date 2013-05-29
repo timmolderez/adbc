@@ -1,6 +1,13 @@
-package be.ac.ua.ansymo.example_bank.aspects;
+/*******************************************************************************
+ * Copyright (c) 2012-2013 Tim Molderez.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the 3-Clause BSD License
+ * which accompanies this distribution, and is available at
+ * http://www.opensource.org/licenses/BSD-3-Clause
+ ******************************************************************************/
 
-import java.util.HashSet;
+package be.ac.ua.ansymo.example_bank.aspects;
 
 import org.aspectj.lang.annotation.AdviceName;
 
@@ -10,19 +17,13 @@ import be.ac.ua.ansymo.example_bank.Account;
 import be.ac.ua.ansymo.example_bank.User;
 
 /**
- * Checks the authentication/authorisation of users in the bank
+ * Checks the authentication of users in the bank
  */
-public aspect Security {
+public aspect Authentication {
 	private boolean User.loggedIn = false;
-	
-	private HashSet<String> User.rights;
 	
 	public boolean User.isLoggedIn() {
 		return loggedIn;
-	}
-	
-	public boolean User.isAuthorized() {
-		return true;
 	}
 	
 	@requires("u!=null")
@@ -30,11 +31,6 @@ public aspect Security {
 	public static void login(User u, String password) {
 		// Password is unused; some authentication this is..
 		u.loggedIn = true;
-	}
-	
-	@requires("u.isLoggedIn()")
-	public static void addRights(User u, String key) {
-		
 	}
 	
 	@requires("$proc")
@@ -47,19 +43,6 @@ public aspect Security {
 			proceed(from, amount, to);
 		} else {
 			System.err.println(from.getOwner().getName() + " is not logged in!");
-		}
-	}
-	
-	
-	@requires("$proc")
-	@ensures({"from.getOwner().isAuthorized()?$proc:true"})
-	@AdviceName("authorize")
-	void around(Account from): call(void Account.transfer(double, Account)) && target(from) {
-		if (from.getOwner().isLoggedIn()) {
-			System.out.println("Authorize: " + from.getOwner().getName() + " is authorized to access this method");
-			proceed(from);
-		} else {
-			System.err.println(from.getOwner().getName() + " is not authorized to access this method!");
 		}
 	}
 }
