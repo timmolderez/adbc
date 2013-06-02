@@ -13,9 +13,9 @@ import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 
-
 /**
- * A bank user
+ * A user of the bank
+ * @author Tim Molderez
  */
 @invariant("$this.name!=null")
 public class User {

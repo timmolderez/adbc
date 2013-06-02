@@ -10,7 +10,7 @@
 package be.ac.ua.ansymo.adbc.utilities;
 
 /**
- * Debugging helper methods..
+ * Helper methods to assist in debugging
  * @author Tim Molderez
  */
 public class Debug {

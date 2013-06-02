@@ -15,11 +15,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation indicating that this method/constructor expects to be advised by the listed advice, in the specified order
- * For example: @advisedBy("Security.authentication, Persistence.store")
+ * Annotation indicating that this method/constructor expects to be advised 
+ * by the listed advice, in the specified order.
+ * For example: @advisedBy("com.myapp.Security.authentication, com.myapp.Persistence.store")
  * 
  * Note that an advice must have a name if you want to mention it in an @advisedBy clause.
- * That is, it should have an @AdviceName annotation.
+ * In other words, the listed advice should have an @AdviceName annotation.
  * @author Tim Molderez
  */
 @Retention(RetentionPolicy.RUNTIME)

@@ -14,5 +14,5 @@ package be.ac.ua.ansymo.example_bank.aspects;
  * @author Tim
  */
 public aspect Precedence {
-	declare precedence: Security, TransactionLogger;
+	declare precedence: Authentication, Authorization, TransactionLogger;
 }

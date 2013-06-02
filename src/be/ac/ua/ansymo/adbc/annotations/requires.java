@@ -15,7 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation containing an array of preconditions 
+ * Annotation containing one or more preconditions
  * (specified at the level of methods/advice)
  * @author Tim Molderez
  */

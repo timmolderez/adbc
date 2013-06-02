@@ -21,8 +21,9 @@ public class AdbcConfig {
 	public static boolean enforceContracts = true;
 	
 	/**
-	 * If true, advice and Liskov substitution are checked. (Default value: true)
-	 * You may want to set it to false for better performance.
+	 * If true, we test whether the substitution principle holds. (Default value: true)
+	 * (In case of methods/constructors, we test strong behavioural subtyping rules;
+	 * in case of advice, we test the rules of the advice substitution principle.)
 	 */
 	public static boolean checkSubstitutionPrinciple = true;
 	

@@ -15,7 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation containing an array of invariants 
+ * Annotation containing one or more invariants
  * (specified at the level of classes/aspects)
  * @author Tim Molderez
  */

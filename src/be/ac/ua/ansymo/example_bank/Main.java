@@ -18,16 +18,11 @@ import be.ac.ua.ansymo.example_bank.aspects.Authorization;
  * calls within this main() function to see what happens if a contract is violated.
  * 
  * @author Tim Molderez
- * 
  */
 public class Main {
 	
 	static Main inst = new Main();
 
-	/**
-	 * Start the demo application
-	 * @param args
-	 */
 	public static void main(String[] args) {
 		try {
 			// Uncomment to alter adbc's settings
@@ -50,18 +45,16 @@ public class Main {
 		Account u2acc1 = new Account(30.0, u2);
 		
 		/* Remove these two lines and contracts will still be satisfied when calling transfer() later on,
-		 * even though the transfer is actually blocked by the authentication/authorization advice in Security.
-		 * This is because, when looking at transfer(), there is an @advisedBy annotation there, which tells
-		 * us that we should be aware of the authentication/authorization advice in Security.
-		 * That is, if we don't log in, we shouldn't be surprised that the transfer is blocked,
-		 * as this is specified by the contracts of the Security advice.
+		 * even though the transfer operation is actually blocked by the authentication/authorization advice in Security.
+		 * This is because, when looking at transfer(), there is an @advisedBy annotation there, indicating that
+		 * we should be aware of the authentication/authorization advice in Security.
 		 * However, try to see what happens if you remove these two lines and the @advisedBy clause. */
-//		Authentication.login(u1, "Peebles");
-//		Authorization.addRights(u1, "transfer");
+		Authentication.login(u1, "Peebles");
+		Authorization.addRights(u1, "transfer");
 		
 		u1acc1.transfer(5.0, u2acc1);
 		
-//		u1acc2.transfer(5.0, u2acc1); // Uncomment this line to substitution error; precondition of SavingsAccount.transfer is stronger than that of Account
+//		u1acc2.transfer(5.0, u2acc1); // Uncomment this line to trigger a substitution error; the precondition of SavingsAccount.transfer is stronger than that of Account
 		u1acc2.transfer(10.0, u1acc1);
 	}
 }

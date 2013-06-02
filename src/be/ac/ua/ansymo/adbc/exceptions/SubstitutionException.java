@@ -10,7 +10,8 @@
 package be.ac.ua.ansymo.adbc.exceptions;
 
 /**
- * Thrown if the Liskov/advice substitution principle doesn't hold
+ * Thrown if a substitution error occurs 
+ * (either the precondition is too strong, the postcondition too weak, or invariants not preserved)
  * @author Tim Molderez
  */
 public class SubstitutionException extends ContractEnforcementException {

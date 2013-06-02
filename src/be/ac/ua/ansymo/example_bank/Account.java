@@ -14,6 +14,10 @@ import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 
+/**
+ * A bank account
+ * @author Tim Molderez
+ */
 @invariant("true")
 public class Account {
 	double amount;
@@ -49,8 +53,8 @@ public class Account {
 		"$this.getAmount()==$old($this.getAmount())-amount",
 		"to.getAmount()==$old(to.getAmount())+amount"
 		})
-//	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate",
-//		"be.ac.ua.ansymo.example_bank.aspects.Authorization.authorize"})
+	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate",
+		"be.ac.ua.ansymo.example_bank.aspects.Authorization.authorize"})
 	public void transfer(double amount, Account to) {
 		withdraw(amount);
 		to.deposit(amount);

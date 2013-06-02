@@ -57,9 +57,9 @@ public class ContractInterpreter {
 	
 	/**
 	 * Evaluate an expression in the current context
-	 * (used for testing/debugging purposes)
+	 * (mainly used for testing/debugging purposes)
 	 * @param expression
-	 * @return
+	 * @return result of the evaluated expression
 	 * @throws ScriptException
 	 */
 	public Object eval(String expression) throws ScriptException {
@@ -130,19 +130,29 @@ public class ContractInterpreter {
 	}
 
 	/**
-	 * Evaluate $proc, in case an advice *is* mentioned in an @advisedBy clause
-	 * Additionally, occurences of $this in $proc are bound as well.
+	 * Resolve $proc, in case an advice *is* mentioned in an @advisedBy clause
+	 * Additionally, any occurrences of $this in $proc are bound as well.
 	 * @param advContracts			contracts of the user-advice
 	 * @param jpContracts			contracts of the advised join point
 	 * @param advByContracts		contracts of all advice that follow in the @advisedBy clause
 	 * @param advByRuntimeTests		pointcut runtime tests of all advice that follow in the @advisedBy clause
-	 * @param aspThis				this objects of the user-advice itself, plus all advice that follow in the @advisedBy clause
+	 * @param aspThis				"this" objects of the user-advice itself, plus all advice that follow in the @advisedBy clause
 	 * @return						
 	 */
 	public String[] evalProc(String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
 		return evalProc_pr(-1, advContracts, jpContracts, advByContracts, advByRuntimeTests, aspThis);
 	}
 
+	/*
+	 * Helper method that replaces any occurrences of the $proc keyword in an advice's contracts
+	 * @param i					the advice has been mentioned in the ith location of an @advisedBy annotation
+	 * @param advContracts		contracts of this advice
+	 * @param jpContracts		contracts of method being advised
+	 * @param advByContracts	contracts of advice i+1, i+2, .. in the @advisedBy clause
+	 * @param advByRuntimeTests	runtime tests of advice i+1, i+2, .. in the @advisedBy clause
+	 * @param aspThis			"this" objects of the user-advice itself, plus all advice that follow in the @advisedBy clause
+	 * @return					processed contracts
+	 */
 	private String[] evalProc_pr(int i, String[] advContracts, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
 		String[] result = new String[advContracts.length];
 
@@ -157,7 +167,17 @@ public class ContractInterpreter {
 		}
 		return result;
 	}
-
+	
+	/*
+	 * Helper method that creates a sort-of switch statement over the contracts of advice i, i+1, .. in an @advisedBy clause
+	 * to decide which contracts apply at runtime
+	 * @param i					start at index i in the @advisedBy clause
+	 * @param jpContracts		contracts of method being advised
+	 * @param advByContracts	contracts of advice i, i+1, i+2, .. in the @advisedBy clause
+	 * @param advByRuntimeTests	runtime tests of advice i, i+1, i+2, .. in the @advisedBy clause
+	 * @param aspThis			"this" objects of the user-advice itself, plus all advice that follow in the @advisedBy clause
+	 * @return					partial effective contracts
+	 */
 	private String evalProc_ab(int i, String[] jpContracts, Vector<String[]> advByContracts, Vector<String> advByRuntimeTests, Vector<Object> aspThis) {
 		// Base case
 		if (i==advByContracts.size()) {
@@ -192,7 +212,7 @@ public class ContractInterpreter {
 	}
 
 	/*
-	 * Concatenates an array of contracts (e.g. the preconditions of a method) into one contract, using the && operation
+	 * Concatenates an array of contracts into one contract, using the && operation
 	 */
 	private String mergeContracts(String[] contracts) {
 		String combined = "";

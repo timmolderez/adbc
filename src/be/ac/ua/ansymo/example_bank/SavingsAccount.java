@@ -12,7 +12,11 @@ package be.ac.ua.ansymo.example_bank;
 import be.ac.ua.ansymo.adbc.annotations.ensures;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 
-
+/**
+ * A savings account; the money on a savings account can only be transferred to accounts with the same owner
+ * (This means a savings account is *not* a behavioural subtype, as the precondition of the transfer() method is too strong.)
+ * @author Tim Molderez
+ */
 public class SavingsAccount extends Account {
 	public SavingsAccount(double amount, User owner) {
 		super(amount, owner);

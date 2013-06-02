@@ -44,11 +44,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 	/**
 	 * Contract enforcer for advice
+	 * @param dyn	the user-advice
 	 */
 	Object around(Object dyn): adviceexecution() && this(dyn) 
 	&& !within(be.ac.ua.ansymo.adbc.aspects.*) && excludeContractEnforcers() {
-		/* Very sensitive pointcut! Do not perform any method calls here besides preCheck() and postCheck() 
-		 * or you'll trigger infinite pointcut matching! */
+		/* Very sensitive pointcut!! Only use what's excluded by excludeContractEnforcers()
+		 * or you'll trigger an infinite recursion! */
 
 		try {
 			PostData pD = preCheck(thisJoinPoint, dyn);
@@ -65,6 +66,9 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	/*
 	 * Do the necessary preparation and
 	 * check all contracts before advice execution (preconditions, invariants, substitution principle)
+	 * @param jp	thisJoinPoint
+	 * @param dyn	the user-advice
+	 * @return data to be passed on to postCheck()
 	 */
 	private PostData preCheck(JoinPoint jp, Object dyn) throws ScriptException {
 		/* ****************************************************************
@@ -144,7 +148,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Reset bindings
 		ContractInterpreter ceval = new ContractInterpreter();
 
-		// Resolve the $proc keyword + $this variable binding (of user advice's this object)
+		// Resolve the $proc keyword + $this variable binding (of the user advice's this object)
 		if(isAdvisedBy && advKind.equals("around")) {
 			AdvBySuffix suffixInfo = getAdvBySuffixContracts(advBySuffix);
 			suffixInfo.aspectInstances.add(0, jp.getThis());
@@ -155,7 +159,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			advPost = ceval.evalProc(advPost, post, jp.getThis());
 		}
 		
-		// Bind $this to the advised method's this object
+		// Bind $this to the advised method call's receiver
 		ceval.setThisBinding(tjp.getTarget());
 		
 		// Bind parameter values of advised join point and the advice itself
@@ -189,14 +193,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
 			if (stPreFailed != null) {
-				throw new PreConditionException(stPreFailed, getCalleeSignature(jp), getCallerSignature(jp));
+				throw new PreConditionException(stPreFailed, getStaticSignature(tjp), getCallerSignature());
 			}
 		}
 		
 		// Test invariants
 		String invFailed = ceval.evalContract(inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, getCalleeSignature(jp), getCallerSignature(jp), "precondition");
+			throw new InvariantException(invFailed, tjp.getSignature().getDeclaringTypeName(), getCallerSignature(), "precondition");
 		}
 
 		// Test advice substitution (if applicable)
@@ -205,12 +209,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 			String jpPreFailed = ceval.evalContract(advPre);
 			if (jpPreFailed != null) {
-				throw new SubstitutionException(jpPreFailed, getCalleeSignature(jp), getCalleeSignature(jp), "precondition too strong");
+				throw new SubstitutionException(jpPreFailed, getDynamicSignature(jp), getDynamicSignature(jp), "precondition too strong");
 			}
 
 			invFailed = ceval.evalContract(advInv);
 			if (invFailed != null) {
-				throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "invariant not preserved");
+				throw new InvariantException(invFailed, jp.getSignature().getDeclaringTypeName(), getDynamicSignature(jp), "invariant not preserved");
 			}
 		}
 		
@@ -219,6 +223,10 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 	/*
 	 * Check contracts after advice execution (postconditions, invariants, substitution principle)
+	 * @param pD		container object with various information produced during the preCheck
+	 * @param jp		thisJoinPoint
+	 * @param dyn		the user-advice instance
+	 * @param result	return value of the user-advice execution
 	 */
 	private void postCheck(PostData pD, JoinPoint jp, Object dyn, Object result) throws ScriptException {
 		ContractInterpreter ceval = pD.ceval;
@@ -230,14 +238,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		if (!pD.advKind.equals("before")) {
 			String stPostFailed = ceval.evalContract(pD.post);
 			if (stPostFailed != null) {
-				throw new PostConditionException(stPostFailed, pD.tjp.getSignature().toLongString(), dyn.getClass().toString());
+				throw new PostConditionException(stPostFailed, getStaticSignature(pD.tjp), getDynamicSignature(jp));
 			}
 		}
 
 		// Test invariants
 		String invFailed = ceval.evalContract(pD.inv);
 		if (invFailed != null) {
-			throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition");
+			throw new InvariantException(invFailed, pD.tjp.getSignature().getDeclaringTypeName(), getDynamicSignature(jp), "postcondition");
 		}
 
 		// Test advice substitution
@@ -245,12 +253,12 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			String jpPostFailed = ceval.evalContract(pD.advPost);
 			
 			if (jpPostFailed != null) {
-				throw new SubstitutionException(jpPostFailed, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition too weak");
+				throw new SubstitutionException(jpPostFailed, jp.getSignature().getDeclaringTypeName(), getDynamicSignature(jp), "postcondition too weak");
 			}
 
 			invFailed = ceval.evalContract(pD.advInv);
 			if (invFailed != null) {
-				throw new InvariantException(invFailed, getCalleeSignature(jp), getCalleeSignature(jp), "invariant not preserved");
+				throw new InvariantException(invFailed, jp.getSignature().getDeclaringTypeName(), getDynamicSignature(jp), "invariant not preserved");
 			}
 		}
 	}
@@ -300,10 +308,10 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 	}
 	
 	/*
-	 * Given a list of advice that follow after the current advice (in the @advisedBy clause in which the current advice is mentioned),
+	 * Given a list of advice that follow after the current advice (in the @advisedBy annotation in which the current advice is mentioned),
 	 * return the preconditions and postconditions of those advice, as well as the run-time portion of their pointcuts
-	 * @param advBySuffix
-	 * @return
+	 * @param advBySuffix	list of following advice names in @advisedBy annotation
+	 * @return contracts of following advice mentioned in @advisedBy annotation
 	 */
 	private AdvBySuffix getAdvBySuffixContracts(String[] advBySuffix) {
 		AdvBySuffix result = new AdvBySuffix();
@@ -353,8 +361,9 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 
 	/*
 	 * Retrieve the caller of the user-advice
+	 * @return the caller's signature
 	 */
-	private String getCallerSignature(JoinPoint jp) {
+	private String getCallerSignature() {
 		/* Runtime stack at this point:
 		 * 0: getStackTrace()
 		 * 1: getCallerSignature_aroundBody()
@@ -381,7 +390,13 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		return "(caller not found)";
 	}
 	
-	private String getCalleeSignature(JoinPoint jp) {
+	/*
+	 * Retrieve the signature of the user-advice
+	 * @param dynType	dynamic type
+	 * @param sig		method signature (its declaring type is ignored..)
+	 * @return dynamic signature
+	 */
+	private String getDynamicSignature(JoinPoint jp) {
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
 		String advName = "anonymous";
@@ -390,6 +405,15 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		}
 		
 		return aSig + "(Advice name: " + advName + ")";
+	}
+	
+	/*
+	 * Retrieve the signature of the advised joinpoint
+	 * @param jp	call join point
+	 * @return static signature	
+	 */
+	private String getStaticSignature(JoinPoint jp) {
+		return jp.getSignature().toLongString();
 	}
 	
 	// Container for return value of getAdvBySuffixContracts
@@ -415,17 +439,17 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			this.isAdvisedBy = isAdvisedBy;
 		}
 		
-		public ContractInterpreter ceval;
+		public ContractInterpreter ceval;	// Contract interpreter
 		
-		public String[] post;
-		public String[] inv;
+		public String[] post;				// Postconditions of advised join point
+		public String[] inv;				// Invariants of advised join point
 		
 		// Contracts of the user-advice
-		public String[] advPost;
-		public String[] advInv;
+		public String[] advPost;			// Postconditions of the user-advice
+		public String[] advInv;				// Invariants of the user-advice
 		
-		public JoinPoint tjp;	// The thisjoinpoint object of the user-advice
-		public String advKind;	// User-advice kind (before, after around)
-		public boolean isAdvisedBy;
+		public JoinPoint tjp;				// The thisjoinpoint object of the user-advice
+		public String advKind;				// User-advice kind (before, after around)
+		public boolean isAdvisedBy;			// Is the user-advice mentioned in an @advisedBy clause?
 	}
 }

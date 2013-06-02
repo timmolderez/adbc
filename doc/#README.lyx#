@@ -17,7 +17,7 @@
 \end_preamble
 \use_default_options true
 \maintain_unincluded_children false
-\language british
+\language english
 \language_package default
 \inputencoding auto
 \fontencoding global
@@ -290,8 +290,8 @@ Contracts in adbc are specified using Java annotations.
 status collapsed
 
 \begin_layout Plain Layout
-By default, contracts are JavaScript expressions.
- Other languages can be used by changing the scripting engine.
+By default, this boolean expression is written in Javascript, though other
+ languages can be used by changing the scripting engine.
 \end_layout
 
 \end_inset
@@ -345,7 +345,7 @@ expects
 \family typewriter
 @advisedBy
 \family default
- annotation, and its pointcut contains constructs that can only be determined
+ clause, and its pointcut contains constructs that can only be determined
  at runtime (e.g.
  
 \family typewriter
@@ -377,6 +377,18 @@ cflow
 \end_layout
 
 \begin_layout Standard
+\begin_inset Note Note
+status collapsed
+
+\begin_layout Plain Layout
+The contracts themselves are written in the form of Javascript expressions,
+ as a String parameter of the annotation.
+ If a contract consists of multiple parts, you can also pass an array of
+ Strings.
+\end_layout
+
+\end_inset
+
 When writing contracts, the following variables and functions are available:
 \end_layout
 
@@ -485,8 +497,8 @@ Modular reasoning
 \end_layout
 
 \begin_layout Standard
-Modular reasoning is about the ability to reason about a method call by
- just looking at the method body's contracts (in the static type).
+Modular reasoning is the ability to reason about a method call by just looking
+ at the method body's contracts (in the static type).
  In practical terms, it should be sufficient to inspect the tooltip you
  get when hovering over a method call in Eclipse.
  (In particular, that tooltip also includes the method body's contracts,
@@ -532,11 +544,7 @@ The preconditions of methods should be equal to or weaker than those in
 \begin_layout Itemize
 The postconditions of methods should be equal to or stronger than those
  in the supertype.
- 
-\begin_inset Newline newline
-\end_inset
-
-(However, this constraint 
+ (However, this constraint 
 \emph on
 only
 \emph default
@@ -565,27 +573,16 @@ If a class is unable to comply with these rules, you can always write a
 \end_layout
 
 \begin_layout Standard
-Modular reasoning in AspectJ presents some additional complexity: Not only
- can the dynamic type differ from the static type at a method call, but
- an advice could also completely change the behaviour of that method call.
+Modular reasoning in AspectJ presents some additional complexity.
+ Not only can the dynamic type differ from the static type at a method call,
+ but an advice could also completely change the behaviour of that method
+ call.
  Luckily, there is a very similar set of rules for writing advice, called
  the 
 \series bold
 advice substitution principle
 \series default
- (ASP).
- Note that, if we refer to 
-\begin_inset Quotes eld
-\end_inset
-
-contracts of an advised join point
-\begin_inset Quotes erd
-\end_inset
-
-, this refers to the contracts of the method body in the static type of
- an advised method call.
- (This also applies to advice that matches on execution join points; they
- modify the behaviour of method calls just the same..)
+ (ASP):
 \end_layout
 
 \begin_layout Itemize
@@ -596,19 +593,21 @@ The preconditions of the advice should be equal to or weaker than those
 \begin_layout Itemize
 The postconditions of the advice should be equal to or stronger than those
  of the join points it advises.
- (Again, this constraint only applies if the precondition of the advised
- join point held in the pre-state.)
+ (Again, this constraint 
+\emph on
+only
+\emph default
+ applies if the precondition of the advised join point held in the pre-state.)
 \end_layout
 
 \begin_layout Itemize
-Invariants of the advised join points must be preserved.
+Invariants of the advised join point must be preserved.
 \end_layout
 
 \begin_layout Standard
 The above rules apply to around advice.
  Since the contracts of before/after advice do not include the effects of
- their implicit proceed call, there are some small differences in their
- ASP rules.
+ around advice, there are some small differences in their ASP rules.
  In case of 
 \series bold
 before
@@ -622,12 +621,12 @@ The preconditions of the advice should be equal to or weaker than those
 \end_layout
 
 \begin_layout Itemize
-If the preconditions of the advised join points held before executing the
+If the preconditions of the advised join point held before executing the
  advice, they should still hold at the end of the advice.
 \end_layout
 
 \begin_layout Itemize
-Invariants of the advised join points must be preserved.
+Invariants of the advised join point must be preserved.
 \end_layout
 
 \begin_layout Standard
@@ -652,7 +651,7 @@ If the postconditions of the advised join point held before executing the
 \end_layout
 
 \begin_layout Itemize
-Invariants of the advised join points must be preserved.
+Invariants of the advised join point must be preserved.
 \end_layout
 
 \begin_layout Standard
@@ -661,7 +660,7 @@ In case an advice is unable to comply with the ASP, this means the advice
  caller of an advised method.
  To avoid such surprises, we should make the caller aware of the advice
  somehow.
- This is done in adbc by means of the 
+ This is done by means of the 
 \family typewriter
 @advisedBy
 \family default
@@ -673,12 +672,7 @@ In case an advice is unable to comply with the ASP, this means the advice
  annotation in all of its join point shadows.
  In other words, the advice name should be visible in all method bodies
  it advises.
- (Note that the 
-\family typewriter
-@advisedBy
-\family default
- annotation is automatically inherited by subclasses.) If one of these methods
- is ever called, the caller will notice the 
+ If one of these methods is ever called, the caller will notice the 
 \family typewriter
 @advisedBy
 \family default
@@ -691,17 +685,16 @@ In case an advice is unable to comply with the ASP, this means the advice
 \end_layout
 
 \begin_layout Standard
-In summary, this is adbc's approach to modular reasoning in AspectJ:
+In summary, this is adbc's approach to modular reasoning in AspectJ.
 \end_layout
 
 \begin_layout Itemize
-When implementing classes, try to take into account the behavioural subtyping
- rules.
+When implementing classes, take into account the behavioural subtyping rules.
  If this is not possible, write a wrapper class instead.
 \end_layout
 
 \begin_layout Itemize
-When implementing advice, try to take into account the rules of the ASP.
+When implementing advice, take into account the rules of the ASP.
 \end_layout
 
 \begin_layout Itemize
@@ -727,25 +720,8 @@ The pointcut of a non-ASP-compliant advice may not include execution join
 \end_layout
 
 \begin_layout Itemize
-If multiple non-ASP-compliant advice are advising the same join point, they
- should be executed in the order specfied by the 
-\family typewriter
-@advisedBy
-\family default
- annotation of the join point.
- When making a proceed call, a non-ASP-compliant advice must also be aware
- of the advice that follow it in the 
-\family typewriter
-@advisedBy
-\family default
- annotation.
-\end_layout
-
-\begin_layout Itemize
 If ASP-compliant and non-ASP-compliant advice are advising the same join
  point, the non-ASP-compliant advice get higher precedence.
- (This is because ASP-compliant advice do not have to take into account
- the contracts of other advice that share some of its join points.)
 \end_layout
 
 \end_deeper
@@ -976,8 +952,7 @@ List.set()
 \family default
 .
  If this is the case, the advice should technically also take into account
- the preconditions of overridden versions, as calls to those methods are
- advised as well.
+ the preconditions of overridden versions.
  Likewise, the 
 \family typewriter
 $proc
@@ -1000,8 +975,8 @@ The following is an example of an authentication advice that does not satisfy
 \family typewriter
 true
 \family default
- if the user is not logged in, which clearly is weaker than the postcondition
- of 
+ if the user is not logged in, which is weaker than the postcondition of
+ 
 \family typewriter
 Account.transfer()
 \family default
@@ -1108,11 +1083,7 @@ nothing
 \begin_inset Quotes erd
 \end_inset
 
- isn't exactly what we expected to happen when calling 
-\family typewriter
-transfer
-\family default
-.
+ isn't exactly what we expected to happen.
 \end_layout
 
 \begin_layout Standard
@@ -1206,11 +1177,7 @@ authenticate
 authorize
 \family default
 .
- (Note that any advice in an 
-\family typewriter
-@advisedBy
-\family default
- annotation must have a name, i.e.
+ (Note that any advice in an @advisedBy annotation must have a name, i.e.
  an @AdviceName annotation.) Adding this 
 \family typewriter
 @advisedBy
@@ -1219,13 +1186,12 @@ authorize
 \family typewriter
 transfer
 \family default
- method is expecting to be advised by these two advice in the given precedence/o
-rder.
+ method is expecting to be advised by these two advice in the given order.
  The 
 \family typewriter
 @advisedBy
 \family default
- annotation is now part of 
+ annotation is a part of 
 \family typewriter
 Account.transfer()
 \family default
@@ -1275,17 +1241,7 @@ authorize
 transfer
 \family default
 's preconditions.
- In this sense, every advice mentioned in the 
-\family typewriter
-@advisedBy
-\family default
- clause is can be viewed as a sort-of wrapper around the preconditions of
- 
-\family typewriter
-transfer
-\family default
-.
- The same logic also applies to the postconditions and invariants when calling
+ The same logic applies to the postconditions and invariants when calling
  
 \family typewriter
 transfer
@@ -1299,7 +1255,7 @@ Finally, I should also mention that these
 @advisedBy
 \family default
  annotations are automatically inherited by subclasses.
- This means that you don't have to add the annotation again when overriding
+ This means that you don' t have to add the annotation again when overriding
  the 
 \family typewriter
 transfer
@@ -1395,11 +1351,7 @@ There is no construct yet to easily inherit contracts from a super class
 \begin_layout Itemize
 The performance of adbc has lots of room for improvement.
  (caching, pointcuts not relying on cflow, avoid relying on the dynamic
- parts of 
-\family typewriter
-thisjoinpoint
-\family default
-, ..)
+ parts of thisjoinpoint, ..)
 \end_layout
 
 \begin_layout Itemize
@@ -1426,8 +1378,7 @@ thisjoinpoint
 \begin_layout Itemize
 Checking behavioural subtyping currently assumes that overriding methods
  use the same parameter names as the overridden method.
- (This could be solved using e.g.
- the Paranamer library..)
+ (This could be solved using the Paranamer library..)
 \end_layout
 
 \begin_layout Itemize
@@ -1435,7 +1386,7 @@ There is basic support for the
 \family typewriter
 @advisedBy
 \family default
- annotation, but several things can be improved:
+ annotation/clause, but several things can be improved:
 \end_layout
 
 \begin_deeper
@@ -1444,7 +1395,7 @@ An advice mentioned in an
 \family typewriter
 @advisedBy
 \family default
- annotation has to be mentioned by its absolute/canonical name.
+ clause has to be mentioned by its absolute/canonical name.
  It would be nicer if you could use its simple name (+ an import statement).
 \end_layout
 
@@ -1453,17 +1404,13 @@ If multiple advice are mentioned in an
 \family typewriter
 @advisedBy
 \family default
- annotation:
+ clause:
 \end_layout
 
 \begin_deeper
 \begin_layout Itemize
 We do not enforce the ordering of the listed advice, but assume this is
- done by a separate 
-\family typewriter
-declare precedence
-\family default
- statement.
+ done by a separate declare precedence statement.
 \end_layout
 
 \begin_layout Itemize
@@ -1471,11 +1418,8 @@ When resolving the
 \family typewriter
 $proc
 \family default
- variable, we assume that the advice mentioned in the 
-\family typewriter
-@advisedBy
-\family default
- annotation use the same parameter names as the join point they advise.
+ variable, we assume that the advice mentioned in the clause use the same
+ parameter names as the join point they advise.
  (Should be possible to figure out the mapping from the advice's names to
  those used by the join point..
  Could be done by examining the advice's pointcut, but I'd rather not re-invent
@@ -1487,7 +1431,7 @@ If an advice is mentioned in an
 \family typewriter
 @advisedBy
 \family default
- annotation and its pointcut makes use of constructs that can only be determined
+ clause and its pointcut makes use of constructs that can only be determined
  at runtime, like 
 \family typewriter
 cflow
@@ -1506,13 +1450,13 @@ if
 \family typewriter
 @advisedBy
 \family default
- annotation.
+ clause.
  The 
 \family typewriter
 @pointcutRuntimetest
 \family default
  annotation is technically redundant information, but it's tricky to fix
- this since there's currently no such thing as a reflection API for pointcuts..
+ this since there's currenly no such thing as a reflection API for pointcuts..
  Another option would be to compile the effective specifications as a preprocess
 ing step, as it can be done statically given the source code..
 \end_layout
@@ -1528,13 +1472,7 @@ Even though advice can have names (using an
 \family typewriter
 @advisedBy
 \family default
- annotation..
- (The 
-\family typewriter
-@advisedBy
-\family default
- annotation could expect a certain aspect, but at runtime a subaspect could
- fill in that role just the same.)
+ clause..
 \end_layout
 
 \end_deeper

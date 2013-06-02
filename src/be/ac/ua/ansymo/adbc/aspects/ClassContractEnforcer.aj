@@ -17,8 +17,6 @@ import java.util.Vector;
 import javax.script.ScriptException;
 
 import org.aspectj.lang.JoinPoint;
-import org.aspectj.lang.annotation.AdviceName;
-import org.aspectj.lang.reflect.AdviceSignature;
 import org.aspectj.lang.reflect.CodeSignature;
 import org.aspectj.lang.reflect.ConstructorSignature;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -32,10 +30,9 @@ import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
-import be.ac.ua.ansymo.adbc.utilities.Debug;
 
 /**
- * This aspects enforces the contracts of all your classes.
+ * This aspect enforces the contracts of all application classes.
  * If a contract is broken, a ContractEnforcementException is thrown.
  * @author Tim Molderez
  */
@@ -49,7 +46,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	Object around(Object dyn): execution(* *.*(..)) && this(dyn)
 	&& excludeContractEnforcers() {
 		/* Very sensitive pointcut!! Only use what's excluded by excludeContractEnforcers()
-		 * or you'll trigger infinite pointcut matching! */
+		 * or you'll trigger an infinite recursion! */
 		
 		try {
 			PostData pD = preCheck(thisJoinPoint, dyn);
@@ -66,10 +63,11 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	/**
 	 * This advice enforces contracts of constructors
 	 * If a contract is broken, a ContractEnforcementException is thrown.
+	 * @param dyn	the this object, used to determine the dynamic type
 	 */
 	Object around(Object dyn): execution(*.new(..)) && excludeContractEnforcers() && this(dyn) {
 		// Skip enforcement if this is the internal constructor of an aspect..
-		if(constructorCheck(thisJoinPoint)) {
+		if(aspectConstructorCheck(thisJoinPoint)) {
 			return proceed(dyn);
 		}
 		
@@ -86,8 +84,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			return result;
 		} catch (ScriptException e) {
 			AdbcConfig.checkSubstitutionPrinciple=subst;
-			System.err.println(e.getMessage());
-			throw new RuntimeException("Failed to evaluate contract: " + e.getMessage());
+			throw new RuntimeException("Failed to evaluate contract (in constructor): " + e.getMessage());
 		}
 	}
 	
@@ -95,18 +92,19 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * Check contracts before method execution (preconditions, invariants, substitution principle)
 	 * @param jp	thisJoinPoint
 	 * @param dyn	the this object
+	 * @return data to be passed on to postCheck()
 	 */
 	private PostData preCheck(JoinPoint jp, Object dyn) throws ScriptException {
 		/* ****************************************************************
 		 * Fetching the necessary info...
 		 **************************************************************** */
 		
-		// Retrieve the call join point which corresponds to the execution join point that is thisJoinPoint.
+		// Retrieve the join point of the method call we're contract-enforcing
 		JoinPoint callJp = null;
 		try {
 			callJp = CallStack.pop();
 		} catch (EmptyStackException e) {
-			callJp = jp;
+			callJp = jp; // You might end up here in case of constructors..
 		}
 		
 		// Reset bindings
@@ -136,7 +134,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			inv = dyn.getClass().getAnnotation(invariant.class).value();
 		}
 		
-		// Reset postconditions
+		// Reset postconditions (used in substitution checking)
 		Vector<String[]> postContracts = new Vector<String[]>();
 		
 		/* ****************************************************************
@@ -165,18 +163,18 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test preconditions
 		String brokenContract = ceval.evalContract(pre);
 		if(brokenContract!=null) {
-			throw new PreConditionException(brokenContract, getCalleeSignature(jp), getCallerSignature(jp));
+			throw new PreConditionException(brokenContract, getStaticSignature(callJp), getCallerSignature());
 		}
 		
 		// Test invariants
 		brokenContract = ceval.evalContract(inv);
 		if(brokenContract!=null) {
-			throw new InvariantException(brokenContract, getCalleeSignature(jp), getCallerSignature(jp), "precondition");
+			throw new InvariantException(brokenContract, callJp.getSignature().getDeclaringTypeName(), getCallerSignature(), "precondition");
 		}
 		
-		// Test Liskov substitution
+		// Test precondition substitution rule
 		if (AdbcConfig.checkSubstitutionPrinciple) {
-			liskovPreCheck(ceval, dyn.getClass(), sig, postContracts);
+			subPreCheck(ceval, dyn.getClass(), sig, postContracts);
 		}
 		
 		return new PostData(ceval, post, inv, callJp, postContracts);
@@ -184,10 +182,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	
 	/*
 	 * Check contracts after method execution (postconditions, invariants, substitution principle)
+	 * @param pD		container object with various information produced during the preCheck
+	 * @param jp		thisJoinPoint
 	 * @param dyn		the this object
 	 * @param result	return value of the method call
 	 */
 	private void postCheck(PostData pD, JoinPoint jp, Object dyn, Object result) throws ScriptException {
+		// Get information from the PostData containeer
 		ContractInterpreter ceval = pD.ceval;
 		JoinPoint callJp = pD.callJp;
 		String[] inv = pD.inv;
@@ -211,37 +212,41 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test postconditions
 		String brokenContract = ceval.evalContract(post);
 		if(brokenContract!=null) {
-			throw new PostConditionException(brokenContract, callJp.getSignature().toLongString(), getCalleeSignature(jp));
+			throw new PostConditionException(brokenContract, getStaticSignature(callJp), getDynamicSignature(dyn.getClass(), sig));
 		}
 		
 		// Test invariants
 		brokenContract = ceval.evalContract(inv);
 		if(brokenContract!=null) {
-			throw new InvariantException(brokenContract, getCalleeSignature(jp), getCalleeSignature(jp), "postcondition");
+			throw new InvariantException(brokenContract, callJp.getSignature().getDeclaringTypeName(), getDynamicSignature(dyn.getClass(), sig), "postcondition");
 		}
 		
-		// Test Liskov substitution
-		if (AdbcConfig.checkSubstitutionPrinciple) {
-			liskovPostCheck(ceval, true, dyn.getClass(), sig, postContracts, 0);
+		// Test postcondition substitution rule 
+		// (skip if the dynamic type == the static type; there are no constraints on the postcondition in this case, since there's no substituting going on...)
+		if (AdbcConfig.checkSubstitutionPrinciple 
+				&& !dyn.getClass().getCanonicalName().equals(callJp.getSignature().getDeclaringTypeName())) {
+			subPostCheck(ceval, true, dyn.getClass(), sig, postContracts, 0);
 		}
 	}
 	
 	/*
 	 * Checks whether the current join point is the execution of an internal constructor in an aspect
-	 * (which cannot have contracts .. plus does not have any corresponding call join point)
 	 * @param jp	thisJoinPoint
 	 */
-	private boolean constructorCheck(JoinPoint jp) {
+	private boolean aspectConstructorCheck(JoinPoint jp) {
 		return jp.getThis().getClass().isAnnotationPresent(org.aspectj.lang.annotation.Aspect.class);
 	}
 	
 	/*
-	 * Check the Liskov substitution principle on preconditions
-	 * @param dynType	check whether this type's preconditions respect its parents
-	 * @param sig		signature of the method to be checked
-	 * @return			true if Liskov substitution is respected in this instance
+	 * Check the precondition rule of behavioural subtyping
+	 * (Subtype's precondition should be equal to or weaker than the supertype's.)
+	 * @param ceval			contract interpreter
+	 * @param dynType		check whether this type's preconditions respect its parents
+	 * @param sig			signature of the method to be checked
+	 * @param postContracts	when the method finishes, this will be filled up with the postconditions in the traversed type hierarchy, with their $old functions evaluated
+	 * @return				true if the precondition rule holds
 	 */
-	private boolean liskovPreCheck(ContractInterpreter ceval, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
+	private boolean subPreCheck(ContractInterpreter ceval, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
 		try {
 			boolean res = true;
 			boolean next = true;
@@ -256,13 +261,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (mBody.getDeclaringClass().getSuperclass()!=Object.class) {
-				next = liskovPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), sig, postContracts);
+				next = subPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), sig, postContracts);
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
 				String brokenInv = ceval.evalContract(dynType.getAnnotation(invariant.class).value());
 				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "invariant not preserved");
+					throw new SubstitutionException(brokenInv,sig.getDeclaringTypeName() , dynType.getCanonicalName(), "invariant not preserved");
 				}
 			}
 			
@@ -285,14 +290,17 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	}
 	
 	/*
-	 * Check the Liskov substitution principle on postconditions
+	 * Check the postcondition rule of behavioural subtyping
+	 * (If the precondition of the supertype held in the pre-state,
+	 * the postcondition of the subtype should be equal to or stronger than the supertype's.)
+	 * @param ceval		contract interpreter
 	 * @param last		result of the caller 
 	 * @param dynType	check whether this type's postconditions respect its parents
 	 * @param sig		signature of the method to be checked
 	 * @param i			index indicating which entry of postContracts to use
-	 * @return			true if Liskov substitution is respected in this instance
+	 * @return			true if the postcondition rule holds
 	 */
-	private boolean liskovPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
+	private boolean subPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
 		boolean res = true;
 		String brokenContract=null;
 		
@@ -312,7 +320,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (!last || res) {
-				return liskovPostCheck(ceval, res, dynType.getSuperclass(), sig, postContracts, i+1);
+				return subPostCheck(ceval, res, dynType.getSuperclass(), sig, postContracts, i+1);
 			} else {
 				throw new SubstitutionException(brokenContract, sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "postcondition too weak");
 			}
@@ -326,8 +334,9 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	
 	/*
 	 * Retrieve the caller of the method
+	 * @return the caller's signature
 	 */
-	private String getCallerSignature(JoinPoint jp) {
+	private String getCallerSignature() {
 		/* Runtime stack at this point:
 		 * 0: getStackTrace()
 		 * 1: getCallerSignature_aroundBody()
@@ -354,8 +363,29 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		return "(caller not found)";
 	}
 	
-	private String getCalleeSignature(JoinPoint jp) {
-		return jp.getSignature().toString();
+	/*
+	 * Retrieve the signature of the method body in the method call's dynamic type
+	 * @param dynType	dynamic type
+	 * @param sig		method signature (its declaring type is ignored..)
+	 * @return dynamic signature
+	 */
+	private String getDynamicSignature(Class<?> dynType, CodeSignature sig) {
+		Method mBody;
+		try {
+			mBody = dynType.getMethod(sig.getName(), sig.getParameterTypes());
+			return dynType.getCanonicalName() + "." + mBody.toString();
+		} catch (Exception e) {
+			return "(method not found)";
+		}
+	}
+	
+	/*
+	 * Retrieve the signature of the method body in the method call's static type
+	 * @param jp	call join point
+	 * @return static signature	
+	 */
+	private String getStaticSignature(JoinPoint jp) {
+		return jp.getSignature().toLongString();
 	}
 	
 	/*
@@ -370,9 +400,9 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			this.postContracts = postContracts;
 		}
 		
-		public ContractInterpreter ceval;
-		public String[] post;
-		public String[] inv;
+		public ContractInterpreter ceval;		// Contract interpreter
+		public String[] post;					// Postconditions of method call's static type
+		public String[] inv;					// Invariants of method call's static type
 		
 		public JoinPoint callJp;				// The call join point corresponding to the execution join point captured by the contract enforcement advice
 		public Vector<String[]> postContracts;	// Postconditions of ancestors, with their $old() calls processed
