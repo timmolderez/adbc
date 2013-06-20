@@ -147,15 +147,6 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Bind the this object
 		ceval.setThisBinding(dyn);
 		
-		// Evaluate calls to the $old() function in the postcondition 
-		try {
-			if (AdbcConfig.checkPostconditions) {
-				post = ceval.evalOldFunction(post);
-			}
-		} catch (ScriptException e) {
-			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
-		}
-		
 		/* ****************************************************************
 		 * Actual contract enforcement
 		 **************************************************************** */
@@ -165,7 +156,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		if(brokenContract!=null) {
 			throw new PreConditionException(brokenContract, getStaticSignature(callJp), getCallerSignature());
 		}
-		
+
 		// Test invariants
 		brokenContract = ceval.evalContract(inv);
 		if(brokenContract!=null) {
@@ -175,6 +166,16 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Test precondition substitution rule
 		if (AdbcConfig.checkSubstitutionPrinciple) {
 			subPreCheck(ceval, dyn.getClass(), sig, postContracts);
+		}
+		
+		// Evaluate calls to the $old() function in the postcondition
+		// (This should be done last; it should be safe for the developer to assume that the preconditions passed when using the $old() function.)
+		try {
+			if (AdbcConfig.checkPostconditions) {
+				post = ceval.evalOldFunction(post);
+			}
+		} catch (ScriptException e) {
+			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
 		
 		return new PostData(ceval, post, inv, callJp, postContracts);

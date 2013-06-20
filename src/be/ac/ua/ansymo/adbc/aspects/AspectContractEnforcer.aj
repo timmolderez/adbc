@@ -166,24 +166,6 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		MethodSignature mSig = (MethodSignature) (tjp.getSignature());
 		ceval.setParameterBindings(mSig.getParameterNames(),tjp.getArgs());
 		ceval.setParameterBindings(aSig.getParameterNames(),jp.getArgs());
-
-		// Evaluate calls to the $old() function in postconditions of advice
-		try {
-			if (AdbcConfig.checkPostconditions && !isAdvisedBy && AdbcConfig.checkSubstitutionPrinciple) {
-				advPost = ceval.evalOldFunction(advPost);
-			}
-		} catch (ScriptException e) {
-			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
-		}
-
-		// Evaluate calls to the $old() function in postconditions of the advised join point
-		try {
-			if (AdbcConfig.checkPostconditions) {	
-				post = ceval.evalOldFunction(post);
-			}
-		} catch (ScriptException e) {
-			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
-		}
 		
 		/* ****************************************************************
 		 * Actual contract enforcement
@@ -216,6 +198,24 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 			if (invFailed != null) {
 				throw new InvariantException(invFailed, jp.getSignature().getDeclaringTypeName(), getDynamicSignature(jp), "invariant not preserved");
 			}
+		}
+		
+		// Evaluate calls to the $old() function in postconditions of advice
+		try {
+			if (AdbcConfig.checkPostconditions && !isAdvisedBy && AdbcConfig.checkSubstitutionPrinciple) {
+				advPost = ceval.evalOldFunction(advPost);
+			}
+		} catch (ScriptException e) {
+			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
+		}
+
+		// Evaluate calls to the $old() function in postconditions of the advised join point
+		try {
+			if (AdbcConfig.checkPostconditions) {	
+				post = ceval.evalOldFunction(post);
+			}
+		} catch (ScriptException e) {
+			throw new RuntimeException("Failed to evaluate old() call: " + e.getMessage());
 		}
 		
 		return new PostData(ceval, post, inv, advPost, advInv, tjp, advKind, isAdvisedBy);
