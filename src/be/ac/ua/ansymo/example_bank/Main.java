@@ -12,6 +12,9 @@ package be.ac.ua.ansymo.example_bank;
 import be.ac.ua.ansymo.example_bank.aspects.Authentication;
 import be.ac.ua.ansymo.example_bank.aspects.Authorization;
 
+//import be.ac.ua.ansymo.example_bank.aspects.Authentication;
+//import be.ac.ua.ansymo.example_bank.aspects.Authorization;
+
 /**
  * A simple demo application to demonstrate the use of the contract enforcer
  * Just tinker around with the contracts in the application, or modify the
@@ -32,7 +35,7 @@ public class Main {
 			
 			inst.start();
 		} catch (Exception e) {
-			System.err.println(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	

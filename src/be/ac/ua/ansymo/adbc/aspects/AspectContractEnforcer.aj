@@ -25,7 +25,6 @@ import org.aspectj.lang.reflect.MethodSignature;
 import be.ac.ua.ansymo.adbc.AdbcConfig;
 import be.ac.ua.ansymo.adbc.annotations.advisedBy;
 import be.ac.ua.ansymo.adbc.annotations.ensures;
-import be.ac.ua.ansymo.adbc.annotations.invariant;
 import be.ac.ua.ansymo.adbc.annotations.pointcutRuntimeTest;
 import be.ac.ua.ansymo.adbc.annotations.requires;
 import be.ac.ua.ansymo.adbc.exceptions.InvariantException;
@@ -33,6 +32,7 @@ import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
+import be.ac.ua.ansymo.adbc.utilities.ContractStore;
 
 /**
  * This aspect enforces the contracts of all aspects in the application. 
@@ -94,6 +94,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		Method mBody = ((MethodSignature) tjp.getSignature()).getMethod();
 
 		// Retrieve the user-advice
+		ContractStore store = ContractStore.getInstance();
 		AdviceSignature aSig = (AdviceSignature) (jp.getSignature());
 		Method aBody = aSig.getAdvice();
 
@@ -102,36 +103,14 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		boolean isAdvisedBy = advBySuffix != null;
 
 		// Get the contracts of the user-advice's advised joinpoint
-		String[] pre = new String[]{"true"};
-		String[] post = new String[]{"true"};
-		String[] inv = new String[]{"true"};
-
-		if (mBody.isAnnotationPresent(requires.class)) {
-			pre = mBody.getAnnotation(requires.class).value();
-		}
-		if (mBody.isAnnotationPresent(ensures.class)) {
-			post = mBody.getAnnotation(ensures.class).value();
-		}
-		if (tjp.getTarget()!=null && tjp.getTarget().getClass().isAnnotationPresent(invariant.class)) {
-			inv = tjp.getTarget().getClass().getAnnotation(invariant.class).value();
-		}
-
-		// Get the contracts of the user-advice itself
-		String[] advPre = new String[]{"true"};
-		String[] advPost = new String[]{"true"};
-		String[] advInv = new String[]{"true"};
-
-		if (AdbcConfig.checkSubstitutionPrinciple || isAdvisedBy) {
-			if (aBody.isAnnotationPresent(requires.class)) {
-				advPre = aBody.getAnnotation(requires.class).value();
-			}
-			if (aBody.isAnnotationPresent(ensures.class)) {
-				advPost = aBody.getAnnotation(ensures.class).value();
-			}
-			if (dyn.getClass().isAnnotationPresent(invariant.class)) {
-				advInv = dyn.getClass().getAnnotation(invariant.class).value();
-			}
-		}
+		String[] pre = store.getPre(mBody);
+		String[] post = store.getPost(mBody);
+		String[] inv = tjp.getTarget()==null?new String[]{"true"}:store.getInvariant(tjp.getTarget().getClass());
+		
+		// Get the contracts of the user-advice itself		
+		String[] advPre = store.getPre(aBody);
+		String[] advPost = store.getPost(aBody);
+		String[] advInv = store.getInvariant(dyn.getClass());
 
 		// Determine user-advice kind (relying on its internal method name)
 		String advKind = "around";
@@ -322,6 +301,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		
 		for (String adv : advBySuffix) {
 			try {
+				ContractStore store = ContractStore.getInstance();
 				int separator = adv.lastIndexOf('.');
 				String aspectName = adv.substring(0, separator);
 				String adviceName = adv.substring(separator+1, adv.length());
@@ -334,13 +314,13 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 					if(adv2.isAnnotationPresent(AdviceName.class)&& adv2.getAnnotation(AdviceName.class).value().equals(adviceName)) {
 						String[] proc = {"$proc"};
 						if (adv2.isAnnotationPresent(requires.class)) {
-							result.pre.add(adv2.getAnnotation(requires.class).value());
+							result.pre.add(store.getPost(adv2));
 						} else {
 							result.pre.add(proc);
 						}
 						
 						if (adv2.isAnnotationPresent(ensures.class)) {
-							result.post.add(adv2.getAnnotation(ensures.class).value());
+							result.post.add(store.getPost(adv2));
 						} else {
 							result.post.add(proc);
 						} 

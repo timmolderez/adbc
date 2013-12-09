@@ -30,6 +30,7 @@ import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.SubstitutionException;
 import be.ac.ua.ansymo.adbc.utilities.ContractInterpreter;
+import be.ac.ua.ansymo.adbc.utilities.ContractStore;
 
 /**
  * This aspect enforces the contracts of all application classes.
@@ -112,7 +113,6 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		
 		// Get the contracts of the method call's static type
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
-
 		AccessibleObject body = null;
 		if(sig instanceof MethodSignature) {
 			body = ((MethodSignature)sig).getMethod();
@@ -120,20 +120,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			body = ((ConstructorSignature)sig).getConstructor();
 		}
 		
-		String[] pre = new String[]{"true"};
-		String[] post = new String[]{"true"};
-		String[] inv = new String[]{"true"};
-		
-		if (body.isAnnotationPresent(requires.class)) {
-			pre = body.getAnnotation(requires.class).value();
-		}
-		if (body.isAnnotationPresent(ensures.class)) {
-			post = body.getAnnotation(ensures.class).value();
-		}
-		if (dyn!= null && dyn.getClass().isAnnotationPresent(invariant.class)) {
-			inv = dyn.getClass().getAnnotation(invariant.class).value();
-		}
-		
+		ContractStore store = ContractStore.getInstance();
+		String[] pre = store.getPre(body);
+		String[] post = store.getPost(body);
+		String[] inv = dyn==null?new String[]{"true"}:store.getInvariant(callJp.getSignature().getDeclaringType());
 		// Reset postconditions (used in substitution checking)
 		Vector<String[]> postContracts = new Vector<String[]>();
 		
@@ -202,11 +192,10 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// Retrieve the method signature of the join point we matched on
 		CodeSignature sig = (CodeSignature)(callJp.getSignature());
 				
-		// In case of constructors, now fetch the invariants and bind this.. 
+		// In case of constructors, now you can fetch the invariants and bind this.. 
 		if (sig instanceof ConstructorSignature) {
-			if (dyn.getClass().isAnnotationPresent(invariant.class)) {
-				inv = dyn.getClass().getAnnotation(invariant.class).value();
-			}
+			ContractStore store = ContractStore.getInstance();
+			inv = store.getInvariant(callJp.getSignature().getDeclaringType());
 			ceval.setThisBinding(dyn);
 		}
 
@@ -252,12 +241,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			boolean res = true;
 			boolean next = true;
 			String brokenContract=null;
+			ContractStore store = ContractStore.getInstance();
 			
 			// Note that getMethod basically does a lookup procedure! (unlike getDeclaredMethod)
 			Method mBody = dynType.getMethod(sig.getName(), sig.getParameterTypes());
 			
 			if (mBody.isAnnotationPresent(requires.class)) {
-				brokenContract = ceval.evalContract(mBody.getAnnotation(requires.class).value());
+				brokenContract = ceval.evalContract(store.getPre(mBody));
 				res = brokenContract==null;
 			}
 			
@@ -266,14 +256,14 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
-				String brokenInv = ceval.evalContract(dynType.getAnnotation(invariant.class).value());
+				String brokenInv = ceval.evalContract(store.getInvariant(dynType));
 				if (brokenInv != null) {
 					throw new SubstitutionException(brokenInv,sig.getDeclaringTypeName() , dynType.getCanonicalName(), "invariant not preserved");
 				}
 			}
 			
 			if (mBody.isAnnotationPresent(ensures.class)) {
-				postContracts.add(ceval.evalOldFunction(mBody.getAnnotation(ensures.class).value()));
+				postContracts.add(ceval.evalOldFunction(store.getPost(mBody)));
 			}
 			
 			if (!next || res) {
@@ -304,6 +294,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	private boolean subPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
 		boolean res = true;
 		String brokenContract=null;
+		ContractStore store = ContractStore.getInstance();
 		
 		try {
 			Method mBody = dynType.getMethod(sig.getName(), sig.getParameterTypes());
@@ -314,7 +305,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
-				String brokenInv = ceval.evalContract(dynType.getAnnotation(invariant.class).value());
+				String brokenInv = ceval.evalContract(store.getInvariant(dynType));
 				if (brokenInv != null) {
 					throw new SubstitutionException(brokenInv,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "invariant not preserved");
 				}

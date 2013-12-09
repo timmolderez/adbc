@@ -23,12 +23,9 @@ public class SavingsAccount extends Account {
 	}
 	
 	@requires({
-		"amount>0",
-		"to!=null",
-		"$this.getOwner()==to.getOwner()"})
+		"$super && $this.getOwner()==to.getOwner()"})
 	@ensures({
-		"$this.getAmount()==$old($this.getAmount())-amount",
-		"to.getAmount()==$old(to.getAmount())+amount"
+		"$super"
 		})
 	public void transfer(double amount, Account to) {
 		withdraw(amount);

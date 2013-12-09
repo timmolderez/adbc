@@ -418,6 +418,24 @@ $old(expr)
 \begin_layout Description
 
 \family typewriter
+$super
+\family default
+ When used in a precondition of an overriding method, 
+\family typewriter
+$super
+\family default
+ refers to the precondition of the overridden method.
+ Likewise, when used in the postcondition, 
+\family typewriter
+$super
+\family default
+ refers to the postcondition of the overridden method.
+ Used in an invariant, it refers to the invariants of the super class.
+\end_layout
+
+\begin_layout Description
+
+\family typewriter
 $proc
 \family default
  Depending on whether this keyword is used in the pre-or postconditions
@@ -1388,11 +1406,6 @@ Invariants can only be attached to a class or aspect, not directly to a
 \end_layout
 
 \begin_layout Itemize
-There is no construct yet to easily inherit contracts from a super class
- when writing the contracts of an overriding method.
-\end_layout
-
-\begin_layout Itemize
 The performance of adbc has lots of room for improvement.
  (caching, pointcuts not relying on cflow, avoid relying on the dynamic
  parts of 
@@ -1542,6 +1555,20 @@ Even though advice can have names (using an
 Release notes
 \end_layout
 
+\begin_layout Itemize
+Version 0.3
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Added support for the $super keyword to inherit specifications from a superclass
+\end_layout
+
+\begin_layout Itemize
+Added cache when retrieving contracts
+\end_layout
+
+\end_deeper
 \begin_layout Itemize
 Version 0.2
 \end_layout

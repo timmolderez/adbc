@@ -107,6 +107,18 @@ public class ContractInterpreter {
 			}
 		}
 	}
+	
+	/**
+	 * Determines whether a set of contracts makes use of the $super keyword
+	 * @param contracts
+	 * @return
+	 */
+//	public boolean usesSuper(String[] contracts) {
+//		for (String contract : contracts) {
+//			
+//		}
+//		return false; 
+//	}
 
 	/**
 	 * Evaluate $proc, in case an advice is *not* mentioned in an @advisedBy clause
@@ -123,7 +135,7 @@ public class ContractInterpreter {
 		for (String contract : advContracts) {
 			contract = contract.replace(thisKeyword, thisKeyword + "1");
 
-			advContracts[i]=contract.replace(procKeyword, proc);
+			advContracts[i]=contract.replace(procKeyword, "(" + proc + ")");
 			i++;
 		}
 		return advContracts;
@@ -162,7 +174,7 @@ public class ContractInterpreter {
 		int j=0;
 		for (String contract : advContracts) {
 			contract = contract.replace(thisKeyword, thisKeyword + (i+1));
-			result[j] = contract.replace(procKeyword, proc);
+			result[j] = contract.replace(procKeyword, "(" + proc + ")");
 			j++;
 		}
 		return result;
@@ -211,10 +223,12 @@ public class ContractInterpreter {
 		return result;
 	}
 
-	/*
+	/**
 	 * Concatenates an array of contracts into one contract, using the && operation
+	 * @param contracts
+	 * @return
 	 */
-	private String mergeContracts(String[] contracts) {
+	public static String mergeContracts(String[] contracts) {
 		String combined = "";
 		String separator = "";
 		for (String contract : contracts) {
