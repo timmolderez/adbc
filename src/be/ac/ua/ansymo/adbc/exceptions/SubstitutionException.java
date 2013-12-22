@@ -18,7 +18,7 @@ public class SubstitutionException extends ContractEnforcementException {
 	
 	/**
 	 * Constructor
-	 * @param postcondition	which postcondition is broken (if a contract consists of multiple parts; only pass the part that has been broken)
+	 * @param contract		which contract is broken (if a contract consists of multiple parts; only pass the part that has been broken)
 	 * @param blame			who is to blame for breaking the contract?
 	 */
 	public SubstitutionException(String contract, String where, String blame, String reason) {

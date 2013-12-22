@@ -155,7 +155,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		
 		// Test precondition substitution rule
 		if (AdbcConfig.checkSubstitutionPrinciple) {
-			subPreCheck(ceval, dyn.getClass(), sig, postContracts);
+			subPreCheck(ceval, dyn.getClass(), null, sig, postContracts);
 		}
 		
 		// Evaluate calls to the $old() function in the postcondition
@@ -195,7 +195,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// In case of constructors, now you can fetch the invariants and bind this.. 
 		if (sig instanceof ConstructorSignature) {
 			ContractStore store = ContractStore.getInstance();
-			inv = store.getInvariant(callJp.getSignature().getDeclaringType());
+			inv = store.getInvariant(dyn.getClass());
 			ceval.setThisBinding(dyn);
 		}
 
@@ -215,7 +215,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		// (skip if the dynamic type == the static type; there are no constraints on the postcondition in this case, since there's no substituting going on...)
 		if (AdbcConfig.checkSubstitutionPrinciple 
 				&& !dyn.getClass().getCanonicalName().equals(callJp.getSignature().getDeclaringTypeName())) {
-			subPostCheck(ceval, true, dyn.getClass(), sig, postContracts, 0);
+			subPostCheck(ceval, true, dyn.getClass(), null, sig, postContracts, 0);
 		}
 	}
 	
@@ -232,11 +232,12 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * (Subtype's precondition should be equal to or weaker than the supertype's.)
 	 * @param ceval			contract interpreter
 	 * @param dynType		check whether this type's preconditions respect its parents
+	 * @param toBeBlamed	if the check fails, this class is to be blamed
 	 * @param sig			signature of the method to be checked
 	 * @param postContracts	when the method finishes, this will be filled up with the postconditions in the traversed type hierarchy, with their $old functions evaluated
 	 * @return				true if the precondition rule holds
 	 */
-	private boolean subPreCheck(ContractInterpreter ceval, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
+	private boolean subPreCheck(ContractInterpreter ceval, Class<?> dynType, Class<?> toBeBlamed, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
 		try {
 			boolean res = true;
 			boolean next = true;
@@ -252,13 +253,13 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (mBody.getDeclaringClass().getSuperclass()!=Object.class) {
-				next = subPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), sig, postContracts);
+				next = subPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), mBody.getDeclaringClass(), sig, postContracts);
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
 				String brokenInv = ceval.evalContract(store.getInvariant(dynType));
 				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,sig.getDeclaringTypeName() , dynType.getCanonicalName(), "invariant not preserved");
+					throw new SubstitutionException(brokenInv,dynType.getCanonicalName(), toBeBlamed.getCanonicalName(), "invariant not preserved");
 				}
 			}
 			
@@ -291,7 +292,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @param i			index indicating which entry of postContracts to use
 	 * @return			true if the postcondition rule holds
 	 */
-	private boolean subPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
+	private boolean subPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, Class<?> toBeBlamed, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
 		boolean res = true;
 		String brokenContract=null;
 		ContractStore store = ContractStore.getInstance();
@@ -305,14 +306,15 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			}
 			
 			if (dynType.isAnnotationPresent(invariant.class)) {
+				
 				String brokenInv = ceval.evalContract(store.getInvariant(dynType));
 				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "invariant not preserved");
+					throw new SubstitutionException(brokenInv,dynType.getCanonicalName(), toBeBlamed.getCanonicalName(), "invariant not preserved");
 				}
 			}
 			
 			if (!last || res) {
-				return subPostCheck(ceval, res, dynType.getSuperclass(), sig, postContracts, i+1);
+				return subPostCheck(ceval, res, dynType.getSuperclass(), dynType, sig, postContracts, i+1);
 			} else {
 				throw new SubstitutionException(brokenContract, sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "postcondition too weak");
 			}
