@@ -9,6 +9,8 @@
 
 package be.ac.ua.ansymo.adbc.utilities;
 
+import java.util.Vector;
+
 /**
  * Helper methods to assist in debugging
  * @author Tim Molderez
@@ -16,6 +18,12 @@ package be.ac.ua.ansymo.adbc.utilities;
 public class Debug {
 	static public void print(Object[] arr) {
 		for (Object obj : arr) {
+			System.out.println(obj.toString());
+		}
+	}
+	
+	static public void print(Vector<Object> vector) {
+		for (Object obj : vector) {
 			System.out.println(obj.toString());
 		}
 	}

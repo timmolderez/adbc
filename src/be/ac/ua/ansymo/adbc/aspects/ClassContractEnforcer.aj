@@ -22,9 +22,6 @@ import org.aspectj.lang.reflect.ConstructorSignature;
 import org.aspectj.lang.reflect.MethodSignature;
 
 import be.ac.ua.ansymo.adbc.AdbcConfig;
-import be.ac.ua.ansymo.adbc.annotations.ensures;
-import be.ac.ua.ansymo.adbc.annotations.invariant;
-import be.ac.ua.ansymo.adbc.annotations.requires;
 import be.ac.ua.ansymo.adbc.exceptions.InvariantException;
 import be.ac.ua.ansymo.adbc.exceptions.PostConditionException;
 import be.ac.ua.ansymo.adbc.exceptions.PreConditionException;
@@ -236,34 +233,28 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 */
 	private boolean subPreCheck(ContractInterpreter ceval, Class<?> dynType, Class<?> toBeBlamed, CodeSignature sig, Vector<String[]> postContracts) throws ScriptException {
 		try {
-			boolean res = true;
-			boolean next = true;
+			boolean res = false;
+			boolean next = false;
 			String brokenContract=null;
 			ContractStore store = ContractStore.getInstance();
 			
 			// Note that getMethod basically does a lookup procedure! (unlike getDeclaredMethod)
 			Method mBody = dynType.getMethod(sig.getName(), sig.getParameterTypes());
 			
-			if (mBody.isAnnotationPresent(requires.class)) {
-				brokenContract = ceval.evalContract(store.getPre(mBody));
-				res = brokenContract==null;
+			brokenContract = ceval.evalContract(store.getPre(mBody));
+			res = brokenContract==null;
+			
+			if (mBody.getDeclaringClass()!=Object.class) {
+				next = subPreCheck(ceval, dynType.getSuperclass(), dynType, sig, postContracts);
 			}
 			
-			if (mBody.getDeclaringClass().getSuperclass()!=Object.class) {
-				next = subPreCheck(ceval, mBody.getDeclaringClass().getSuperclass(), mBody.getDeclaringClass(), sig, postContracts);
+			String brokenInv = ceval.evalContract(store.getInvariant(dynType));
+			if (brokenInv != null) {
+				throw new SubstitutionException(brokenInv,dynType.getCanonicalName(), toBeBlamed.getCanonicalName(), "invariant not preserved");
 			}
-			
-			if (dynType.isAnnotationPresent(invariant.class)) {
-				String brokenInv = ceval.evalContract(store.getInvariant(dynType));
-				if (brokenInv != null) {
-					throw new SubstitutionException(brokenInv,dynType.getCanonicalName(), toBeBlamed.getCanonicalName(), "invariant not preserved");
-				}
-			}
-			
-			if (mBody.isAnnotationPresent(ensures.class)) {
-				postContracts.add(ceval.evalOldFunction(store.getPost(mBody)));
-			}
-			
+
+			postContracts.add(ceval.evalOldFunction(store.getPost(mBody)));
+
 			if (!next || res) {
 				return res;
 			} else {
@@ -273,7 +264,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			e.printStackTrace();
 			return false;
 		} catch (NoSuchMethodException e) {
-			return true;
+			return false;
 		}
 		
 	}
@@ -292,38 +283,38 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 * @return			true if the postcondition+invariant rule holds
 	 */
 	private boolean subPostCheck(ContractInterpreter ceval, boolean last, Class<?> dynType, Class<?> toBeBlamed, CodeSignature sig, Vector<String[]> postContracts, int i) throws ScriptException {
-		boolean res = true;
-		String brokenContract=null;
-		Method mBody=null;
-		ContractStore store = ContractStore.getInstance();
 		try {
+			boolean res = true;
+			String brokenContract=null;
+			Method mBody=null;
+			ContractStore store = ContractStore.getInstance();
+
 			mBody = dynType.getMethod(sig.getName(), sig.getParameterTypes());
-			
-			if (mBody.isAnnotationPresent(ensures.class) && i<postContracts.size()) {
+
+			if (i<postContracts.size()) {
 				brokenContract = ceval.evalContract(postContracts.get(i));
 				res = brokenContract==null;
 			}
-		} catch (SecurityException e) {
-			e.printStackTrace();
-			return false;
-		} catch (NoSuchMethodException e) {
-			return true;
-		}
-			
-		if (dynType.isAnnotationPresent(invariant.class)) {
+
+
 			String brokenInv = ceval.evalContract(store.getInvariant(dynType));
 			if (brokenInv != null) {
 				throw new SubstitutionException(brokenInv,dynType.getCanonicalName(), toBeBlamed.getCanonicalName(), "invariant not preserved");
 			}
-		}
-		
-		if (!last || res) {
-			return subPostCheck(ceval, res, dynType.getSuperclass(), dynType, sig, postContracts, i+1);
-		} else {
-			throw new SubstitutionException(brokenContract, sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "postcondition too weak");
+
+			if (!last || res) {
+				return subPostCheck(ceval, res, dynType.getSuperclass(), dynType, sig, postContracts, i+1);
+			} else {
+				throw new SubstitutionException(brokenContract, sig.toLongString() , dynType.getCanonicalName() + "." + mBody.toString(), "postcondition too weak");
+			}
+		} catch (SecurityException e) {
+			e.printStackTrace();
+			return true;
+		} catch (NoSuchMethodException e) {
+			return true;
 		}
 	}
-	
+
 	/*
 	 * Check that invariants are preserved in the post-state of a constructor
 	 * @param ceval			contract interpreter
@@ -334,7 +325,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	 */
 	private boolean subPostConstructorCheck(ContractInterpreter ceval,Class<?> dynType, Class<?> toBeBlamed) throws ScriptException {
 		if(dynType==null) {
-			return true;
+			return false;
 		}
 
 		ContractStore store = ContractStore.getInstance();
@@ -345,7 +336,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 		return subPostConstructorCheck(ceval, dynType.getSuperclass(), dynType);
 	}
-	
+
 	/*
 	 * Retrieve the caller of the method
 	 * @return the caller's signature
@@ -361,7 +352,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		 * 6: contract advice
 		 * 7: user advice
 		 * 8+ The actual caller should be around here, after skipping all the internal stuff AspectJ creates.. */
-		
+
 		int i=8;
 		StackTraceElement[] elems = Thread.currentThread().getStackTrace();
 		while (i<elems.length) {
@@ -376,7 +367,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 		}
 		return "(caller not found)";
 	}
-	
+
 	/*
 	 * Retrieve the signature of the method body in the method call's dynamic type
 	 * @param dynType	dynamic type
@@ -392,7 +383,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 			return "(method not found)";
 		}
 	}
-	
+
 	/*
 	 * Retrieve the signature of the method body in the method call's static type
 	 * @param jp	call join point
@@ -401,7 +392,7 @@ public aspect ClassContractEnforcer extends AbstractContractEnforcer {
 	private String getStaticSignature(JoinPoint jp) {
 		return jp.getSignature().toLongString();
 	}
-	
+
 	/*
 	 * Container for the data to be passed from preCheck() to postCheck()
 	 */
