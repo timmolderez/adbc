@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012-2013 Tim Molderez.
+ * Copyright (c) 2012-2014 Tim Molderez.
  * 
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the 3-Clause BSD License
@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation indicating that this method/constructor expects to be advised 
- * by the listed advice, in the specified order.
+ * by the listed advice, in the specified precedence order.
  * For example: @advisedBy("com.myapp.Security.authentication, com.myapp.Persistence.store")
  * 
  * Note that an advice must have a name if you want to mention it in an @advisedBy clause.

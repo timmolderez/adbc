@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012-2013 Tim Molderez.
+ * Copyright (c) 2012-2014 Tim Molderez.
  * 
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the 3-Clause BSD License
@@ -15,11 +15,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation indicating that this method/constructor expects to be advised by the listed advice, in the specified order
- * For example: @advisedBy("Security.authentication, Persistence.store")
- * 
- * Note that an advice must have a name if you want to mention it in an @advisedBy clause.
- * That is, it should have an @AdviceName annotation.
+ * Optional annotation that can be attached to an advice, to specify the dynamic parts of its pointcut
+ * (e.g. cflow, if, ..). Technically this is redundant information, but we use this annotation to work around
+ * the fact that there currently is no reflection API for pointcuts.
  * @author Tim Molderez
  */
 @Retention(RetentionPolicy.RUNTIME)

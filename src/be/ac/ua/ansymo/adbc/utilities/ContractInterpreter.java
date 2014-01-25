@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012-2013 Tim Molderez.
+ * Copyright (c) 2012-2014 Tim Molderez.
  * 
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the 3-Clause BSD License
@@ -108,18 +108,6 @@ public class ContractInterpreter {
 		}
 	}
 	
-	/**
-	 * Determines whether a set of contracts makes use of the $super keyword
-	 * @param contracts
-	 * @return
-	 */
-//	public boolean usesSuper(String[] contracts) {
-//		for (String contract : contracts) {
-//			
-//		}
-//		return false; 
-//	}
-
 	/**
 	 * Evaluate $proc, in case an advice is *not* mentioned in an @advisedBy clause
 	 * Additionally, occurences of $this in $proc are bound as well. 
