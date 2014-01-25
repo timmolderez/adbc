@@ -3,7 +3,7 @@ adbc - Design by Contract for AspectJ
 
 ![adbc logo](https://raw.github.com/timmolderez/adbc/master/doc/adbc.png)
 
-Adbc is a small and lightweight library that adds support for [design by contract](http://en.wikipedia.org/wiki/Design_by_contract) to the [AspectJ](http://eclipse.org/aspectj/) programming language.  
+Adbc is a small library that adds support for [design by contract](http://en.wikipedia.org/wiki/Design_by_contract) to the [AspectJ](http://eclipse.org/aspectj/) programming language.  
 <sub>Released under the [BSD 3-Clause license](http://opensource.org/licenses/BSD-3-Clause).</sub>
 
 - Add the library to your AspectJ project and contracts will automatically be enforced at runtime. Whenever a contract is broken, an exception is thrown which also indicates who is to blame.
