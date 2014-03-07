@@ -125,6 +125,7 @@ public class ContractStore {
 				post[i]=contract.replace(superKeyword, "(" + overriddenPost + ")");
 				i++;
 			}
+			
 			postStore.put(key, post);
 		}
 		

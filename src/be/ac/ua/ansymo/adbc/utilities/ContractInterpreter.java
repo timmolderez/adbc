@@ -119,14 +119,14 @@ public class ContractInterpreter {
 		String proc = mergeContracts(jpContracts);
 		setThisBinding(aspThis, 1);
 
+		String[] result = new String[advContracts.length];
 		int i=0;
 		for (String contract : advContracts) {
 			contract = contract.replace(thisKeyword, thisKeyword + "1");
-
-			advContracts[i]=contract.replace(procKeyword, "(" + proc + ")");
+			result[i]=contract.replace(procKeyword, "(" + proc + ")");
 			i++;
 		}
-		return advContracts;
+		return result;
 	}
 
 	/**

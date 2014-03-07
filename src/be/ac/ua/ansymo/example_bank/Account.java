@@ -47,13 +47,15 @@ public class Account {
 	}
 	
 	@requires({
+		"$this.getAmount()>0",
 		"amount>0",
 		"to!=null"})
 	@ensures({
 		"$this.getAmount()==$old($this.getAmount())-amount",
 		"to.getAmount()==$old(to.getAmount())+amount"
 		})
-	@advisedBy({"be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate",
+	@advisedBy({
+		"be.ac.ua.ansymo.example_bank.aspects.Authentication.authenticate",
 		"be.ac.ua.ansymo.example_bank.aspects.Authorization.authorize"})
 	public void transfer(double amount, Account to) {
 		withdraw(amount);

@@ -153,6 +153,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 		// Test preconditions
 		if (!advKind.equals("after")) {
 			String stPreFailed = ceval.evalContract(pre);
+			
 			if (stPreFailed != null) {
 				throw new PreConditionException(stPreFailed, getStaticSignature(tjp), getCallerSignature());
 			}
@@ -220,7 +221,7 @@ public aspect AspectContractEnforcer extends AbstractContractEnforcer {
 				throw new PostConditionException(stPostFailed, getStaticSignature(pD.tjp), getDynamicSignature(jp));
 			}
 		}
-
+		
 		// Test invariants
 		String invFailed = ceval.evalContract(pD.inv);
 		if (invFailed != null) {
